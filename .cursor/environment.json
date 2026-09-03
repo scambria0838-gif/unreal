@@ -1,0 +1,14 @@
+{
+  "name": "Unreal",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Vite dev server for the Unreal task board on http://localhost:5173"
+    }
+  ],
+  "ports": [
+    { "name": "vite-dev", "port": 5173 }
+  ]
+}
