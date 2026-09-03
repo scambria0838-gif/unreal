@@ -43,7 +43,7 @@ file_put_contents(
   FILE_APPEND | LOCK_EX
 );
 
-$to = 'review@jlsprojects.com';
+$to = 'review@projectjls.com';
 $subject = 'JLS project review — ' . $name;
 $lines = [];
 foreach ($payload as $key => $value) {
@@ -51,7 +51,7 @@ foreach ($payload as $key => $value) {
     $lines[] = $key . ': ' . $value;
   }
 }
-$headers = "From: website@jlsprojects.com\r\nReply-To: " . $phone . "\r\n";
+$headers = "From: website@projectjls.com\r\nReply-To: " . $phone . "\r\n";
 @mail($to, $subject, implode("\n", $lines), $headers);
 
 echo json_encode(['ok' => true]);

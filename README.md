@@ -55,9 +55,9 @@ Portfolio and case-study templates are designed and empty on purpose.
 - `/ask-john` — construction concierge (not a building official)
 - `tel:+16025262299` and `sms:+16025262299`
 - Sticky mobile call bar
-- Hostinger intake: `POST /review-intake.php` (writes `leads/reviews.log` and emails `review@jlsprojects.com`)
+- Hostinger intake: `POST /review-intake.php` (writes `leads/reviews.log` and emails `review@projectjls.com`)
 
-## Hostinger (jlsprojects.com)
+## Hostinger (projectjls.com)
 
 The production build is a static export (`out/`) for Hostinger shared hosting.
 
@@ -69,14 +69,14 @@ npm run build
 Or, with FTP credentials in the environment:
 
 ```bash
-export HOSTINGER_FTP_HOST=ftp.jlsprojects.com
+export HOSTINGER_FTP_HOST=ftp.projectjls.com
 export HOSTINGER_FTP_USER=...
 export HOSTINGER_FTP_PASSWORD=...
 export HOSTINGER_FTP_DIR=/public_html
 bash scripts/deploy-hostinger.sh
 ```
 
-Point the domain A record to the Hostinger server IP in hPanel (or Cloudflare DNS). Enable SSL.
+The domain already points at Hostinger (`hermes.dns-parking.com` / `artemis.dns-parking.com`). Enable SSL in hPanel if it is not already on.
 
 ## SEO
 
