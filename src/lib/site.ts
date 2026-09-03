@@ -1,0 +1,125 @@
+export const site = {
+  name: "JLS Development Enterprises Inc.",
+  shortName: "JLS Development",
+  legalName: "JLS Development Enterprises Inc.",
+  person: "John Scatterday",
+  personFull: "John Samuel Scatterday",
+  tagline: "The expert you call when the project gets complicated.",
+  phrase: "From red tag to green light.",
+  description:
+    "Arizona construction consulting, general contracting, permit problem resolution, and project rescue. Residential and commercial. Licensed ROC #167786.",
+  phone: "602-526-2299",
+  phoneHref: "tel:+16025262299",
+  smsHref: "sms:+16025262299",
+  email: "review@jlsdevelopment.com",
+  roc: "167786",
+  rocClass: "KB-2 Dual — Residential and Small Commercial",
+  licenseIssued: "2001-08-21",
+  licenseIssuedDisplay: "August 21, 2001",
+  incorporatedDisplay: "2002",
+  entityId: "09943568",
+  mailingAddress: {
+    line1: "PO Box 5911",
+    city: "Scottsdale",
+    state: "AZ",
+    zip: "85261",
+  },
+  serviceRegion: "Arizona",
+  rocVerifyUrl: "https://roc.az.gov/contractor-search",
+  url: "https://jlsdevelopment.com",
+  yearsConstruction: "30+",
+  yearsLicensedLabel: "Licensed in Arizona since 2001",
+} as const;
+
+export const nav = {
+  primary: [
+    { href: "/services", label: "Services" },
+    { href: "/residential", label: "Residential" },
+    { href: "/commercial", label: "Commercial" },
+    { href: "/intelligence", label: "Intelligence" },
+    { href: "/about", label: "John" },
+  ],
+  more: [
+    { href: "/portfolio", label: "Portfolio" },
+    { href: "/case-studies", label: "Case Studies" },
+    { href: "/locations", label: "Arizona" },
+    { href: "/ask-john", label: "Ask John" },
+    { href: "/review", label: "Project Review" },
+  ],
+} as const;
+
+export const ctas = {
+  primary: { href: "/review", label: "Get my project moving" },
+  call: { href: site.phoneHref, label: `Call John — ${site.phone}` },
+  review: { href: "/review", label: "Request project review" },
+  redTag: { href: "/review?focus=red-tag", label: "Start my red-tag review" },
+  permit: { href: "/review?focus=permit", label: "Get permit help" },
+  ownerBuilder: {
+    href: "/review?focus=owner-builder",
+    label: "Talk to John about owner-builder consulting",
+  },
+  consult: { href: "/review?focus=consult", label: "Schedule consultation" },
+  secondOpinion: { href: "/review?focus=second-opinion", label: "Get a second opinion" },
+  ask: { href: "/ask-john", label: "Ask John" },
+  upload: { href: "/review?focus=red-tag", label: "Upload my red tag" },
+  discuss: { href: "/review?focus=build", label: "Discuss my build" },
+} as const;
+
+export const statsPending = [
+  {
+    id: "years-construction",
+    label: "Years in construction",
+    value: "30+",
+    status: "owner-provided" as const,
+    note: "Stated by the owner. Field experience, not a license-duration claim.",
+  },
+  {
+    id: "years-licensed",
+    label: "Arizona license",
+    value: "Since 2001",
+    status: "verified" as const,
+    note: "ROC #167786 originally issued August 21, 2001.",
+  },
+  {
+    id: "homes",
+    label: "Homes completed",
+    value: "—",
+    status: "pending" as const,
+    note: "Awaiting owner authorization before publication.",
+  },
+  {
+    id: "commercial",
+    label: "Commercial projects",
+    value: "—",
+    status: "pending" as const,
+    note: "Awaiting owner authorization before publication.",
+  },
+  {
+    id: "permits",
+    label: "Permits pulled",
+    value: "—",
+    status: "pending" as const,
+    note: "Awaiting owner authorization before publication.",
+  },
+  {
+    id: "value",
+    label: "Total project value",
+    value: "—",
+    status: "pending" as const,
+    note: "Not published until John verifies the figure.",
+  },
+  {
+    id: "municipalities",
+    label: "Municipalities worked",
+    value: "—",
+    status: "pending" as const,
+    note: "Service area is Arizona. Specific city counts pending authorization.",
+  },
+  {
+    id: "clients",
+    label: "Notable clients",
+    value: "—",
+    status: "pending" as const,
+    note: "No celebrity or corporate names published without written authorization.",
+  },
+] as const;
