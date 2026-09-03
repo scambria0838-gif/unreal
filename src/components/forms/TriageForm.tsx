@@ -78,11 +78,12 @@ export function TriageForm({ focus, city }: TriageFormProps) {
 
   if (status === "done") {
     return (
-      <div className="border border-ink/10 bg-paper p-8 text-ink">
+      <div className="border border-bronze bg-paper p-8 text-ink">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-bronze-2">Received</p>
         <h2 className="mt-4 font-display text-4xl">John has the facts.</h2>
         <p className="mt-4 text-sm leading-7 text-ink/70">
-          If this is a red tag or stop-work, do not wait on email. Call now.
+          Your project review was submitted. If this is a red tag or stop-work, do
+          not wait on email. Call now.
         </p>
         <div className="mt-8">
           <Button href={site.phoneHref}>Call {site.phone}</Button>
