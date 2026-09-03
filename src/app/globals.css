@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0b0b0a;
+  --ink-2: #141413;
+  --ink-3: #1c1c19;
+  --paper: #f3efe6;
+  --paper-2: #e7e1d4;
+  --steel: #b7b1a6;
+  --concrete: #7c776e;
+  --bronze: #c4a46a;
+  --bronze-2: #9a7b45;
+  --hazard: #c45c4a;
+  --line: rgba(243, 239, 230, 0.12);
+  --line-dark: rgba(11, 11, 10, 0.12);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-steel: var(--steel);
+  --color-concrete: var(--concrete);
+  --color-bronze: var(--bronze);
+  --color-bronze-2: var(--bronze-2);
+  --color-hazard: var(--hazard);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex), ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--bronze);
+  color: var(--ink);
+}
+
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.grain {
+  position: relative;
+}
+
+.grain::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.blueprint {
+  background-color: #10130f;
+  background-image:
+    linear-gradient(rgba(196, 164, 106, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196, 164, 106, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.hairline {
+  background: var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
