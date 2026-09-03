@@ -55,9 +55,28 @@ Portfolio and case-study templates are designed and empty on purpose.
 - `/ask-john` — construction concierge (not a building official)
 - `tel:+16025262299` and `sms:+16025262299`
 - Sticky mobile call bar
-- `POST /api/review` and `POST /api/ask-john` currently log qualified intake (ready for email/CRM)
+- Hostinger intake: `POST /review-intake.php` (writes `leads/reviews.log` and emails `review@jlsprojects.com`)
 
-Set production mail/CRM in those routes when credentials exist.
+## Hostinger (jlsprojects.com)
+
+The production build is a static export (`out/`) for Hostinger shared hosting.
+
+```bash
+npm run build
+# upload the contents of out/ into public_html
+```
+
+Or, with FTP credentials in the environment:
+
+```bash
+export HOSTINGER_FTP_HOST=ftp.jlsprojects.com
+export HOSTINGER_FTP_USER=...
+export HOSTINGER_FTP_PASSWORD=...
+export HOSTINGER_FTP_DIR=/public_html
+bash scripts/deploy-hostinger.sh
+```
+
+Point the domain A record to the Hostinger server IP in hPanel (or Cloudflare DNS). Enable SSL.
 
 ## SEO
 

@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { site } from "@/lib/site";
 import { triageFields, triageSchema } from "@/lib/triage";
 
-type TriageFormProps = {
-  focus?: string;
-  city?: string;
-};
-
-export function TriageForm({ focus, city }: TriageFormProps) {
+export function TriageForm() {
+  const params = useSearchParams();
+  const focus = params.get("focus") ?? "";
+  const cityFromUrl = params.get("city") ?? "";
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -23,10 +22,10 @@ export function TriageForm({ focus, city }: TriageFormProps) {
       stopWork: focus === "red-tag" ? "unsure" : "unsure",
       plansExist: "unsure",
       permitPulled: "unsure",
-      city: city ?? "",
-      focus: focus ?? "",
+      city: cityFromUrl,
+      focus,
     }),
-    [city, focus],
+    [cityFromUrl, focus],
   );
 
   async function onSubmit(formData: FormData) {
@@ -60,19 +59,30 @@ export function TriageForm({ focus, city }: TriageFormProps) {
       return;
     }
 
+    const body = new URLSearchParams();
+    for (const [key, value] of Object.entries(parsed.data)) {
+      body.set(key, value ?? "");
+    }
+
     try {
-      const response = await fetch("/api/review", {
+      const response = await fetch("/review-intake.php", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
       });
       if (!response.ok) {
         throw new Error("The review could not be sent.");
       }
       setStatus("done");
     } catch {
-      setStatus("error");
-      setError("The form did not send. Call 602-526-2299.");
+      const subject = encodeURIComponent(`JLS project review — ${parsed.data.name}`);
+      const mailBody = encodeURIComponent(
+        Object.entries(parsed.data)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n"),
+      );
+      window.location.href = `mailto:${site.email}?subject=${subject}&body=${mailBody}`;
+      setStatus("done");
     }
   }
 
@@ -164,7 +174,7 @@ export function TriageForm({ focus, city }: TriageFormProps) {
       <button
         type="submit"
         disabled={status === "submitting"}
-        className="bg-bronze px-5 py-4 font-mono text-[11px] uppercase tracking-[0.2em] text-ink disabled:opacity-60"
+        className="bg-bronze px-5 py-4 font-mono text-[11px] uppercase tracking-[0.20em] text-ink disabled:opacity-60"
       >
         {status === "submitting" ? "Sending review…" : "Request project review"}
       </button>

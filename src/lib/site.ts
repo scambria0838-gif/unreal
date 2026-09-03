@@ -11,7 +11,7 @@ export const site = {
   phone: "602-526-2299",
   phoneHref: "tel:+16025262299",
   smsHref: "sms:+16025262299",
-  email: "review@jlsdevelopment.com",
+  email: "review@jlsprojects.com",
   roc: "167786",
   rocClass: "KB-2 Dual — Residential and Small Commercial",
   licenseIssued: "2001-08-21",
@@ -26,7 +26,7 @@ export const site = {
   },
   serviceRegion: "Arizona",
   rocVerifyUrl: "https://roc.az.gov/contractor-search",
-  url: "https://jlsdevelopment.com",
+  url: "https://jlsprojects.com",
   yearsConstruction: "30+",
   yearsLicensedLabel: "Licensed in Arizona since 2001",
 } as const;

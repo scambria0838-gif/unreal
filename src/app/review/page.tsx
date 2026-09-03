@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { TriageForm } from "@/components/forms/TriageForm";
 import { PageHero } from "@/components/pages/PageHero";
 import { Container } from "@/components/ui/Container";
@@ -11,13 +12,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/review" },
 };
 
-type Props = {
-  searchParams: Promise<{ focus?: string; city?: string }>;
-};
-
-export default async function ReviewPage({ searchParams }: Props) {
-  const params = await searchParams;
-
+export default function ReviewPage() {
   return (
     <>
       <PageHero
@@ -29,7 +24,9 @@ export default async function ReviewPage({ searchParams }: Props) {
       <section className="bg-ink py-20">
         <Container className="grid gap-12 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <TriageForm focus={params.focus} city={params.city} />
+            <Suspense fallback={<p className="text-steel">Loading the review form…</p>}>
+              <TriageForm />
+            </Suspense>
           </div>
           <aside className="border border-paper/10 p-8 lg:col-span-5">
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-bronze">
