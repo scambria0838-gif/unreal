@@ -175,6 +175,12 @@ class SuperNinjaWatcher(object):
 
         unreal.log("[SuperNinja v2] dispatch {} -> {}".format(
             filename, request.get("tool") or "plan"))
+        if "control" in request:
+            result_json = json.dumps(self.handle_control(request, filename))
+            self.write_result(filename, result_json)
+            self.retire(src, self.processed)
+            return
+
         try:
             if "steps" in request:
                 result_json = self.bridge.execute_plan(json.dumps(request))
@@ -206,6 +212,60 @@ class SuperNinjaWatcher(object):
             sb.WATCHER_STATS["last_dispatch_ms"] = elapsed_ms
         except Exception:
             pass
+
+    # -- control channel ---------------------------------------------------
+
+    CONTROLS = ("pie_state", "begin_play", "end_play")
+
+    def handle_control(self, request, filename):
+        """Editor-session controls, deliberately outside the write guard.
+
+        The PIE guard refuses every tool in WRITE_TOOLS while the editor is
+        playing, and that must not be relaxed -- it is the whole reason the
+        bridge exists. But it has a consequence nobody noticed until the live
+        run: execute_python is itself a write tool, so the bridge could enter
+        PIE and could not leave. The acceptance test therefore needed a human
+        at the keyboard for the one section that proves the guard works.
+
+        These three controls break that deadlock without touching the guard.
+        None of them can modify the scene: they start a play session, end one,
+        or report whether one is running. Ending PIE is not a write -- it is
+        the operation that *discards* the throwaway PIE world and returns the
+        editor to the state the guard is protecting.
+
+        They are not tools. They are not in TOOLS and not in WRITE_TOOLS, so
+        the 14-tool identity check that this project uses as its integrity
+        signal is unchanged.
+        """
+        name = request.get("control")
+        try:
+            import superninja_bridge_v2 as sb
+            les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+            if name not in self.CONTROLS:
+                return {"ok": False, "verified": False, "control": name,
+                        "reason": "unknown control {!r}; expected one of {}".format(
+                            name, ", ".join(self.CONTROLS)),
+                        "request_file": filename}
+
+            was = bool(les.is_in_play_in_editor())
+            if name == "begin_play" and not was:
+                les.editor_request_begin_play()
+            elif name == "end_play" and was:
+                les.editor_request_end_play()
+
+            now = bool(les.is_in_play_in_editor())
+            ctx = sb._check_world_context()[0]
+            # begin/end are requests the editor services on a later tick, so
+            # "changed" is reported honestly rather than assumed.
+            return {"ok": True, "verified": True, "control": name,
+                    "in_play_before": was, "in_play_after": now,
+                    "changed": was != now, "world_context": ctx,
+                    "request_file": filename}
+        except Exception as exc:
+            return {"ok": False, "verified": False, "control": name,
+                    "reason": "control raised: {}".format(exc),
+                    "traceback": traceback.format_exc(),
+                    "request_file": filename}
 
     def write_result(self, filename, result_json):
         """Write atomically: a reader polling the outbox must never see a

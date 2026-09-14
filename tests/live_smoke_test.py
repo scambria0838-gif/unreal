@@ -104,9 +104,22 @@ class Bridge(object):
         os.makedirs(self.inbox, exist_ok=True)
         os.makedirs(self.outbox, exist_ok=True)
 
+    def control(self, name, timeout=None):
+        """Drive PIE without a human.
+
+        The bridge cannot end PIE through a tool -- execute_python is a write
+        tool and the guard refuses it -- so the watcher exposes a control
+        channel outside the guard. See handle_control() in init_unreal.py.
+        """
+        return self._exchange({"control": name},
+                              "smoke_ctl_{}".format(name), timeout)
+
     def send(self, tool, timeout=None, **args):
-        name = "smoke_{}_{}.json".format(tool, uuid.uuid4().hex[:8])
-        payload = {"tool": tool, "args": args}
+        return self._exchange({"tool": tool, "args": args},
+                              "smoke_{}".format(tool), timeout)
+
+    def _exchange(self, payload, stem, timeout=None):
+        name = "{}_{}.json".format(stem, uuid.uuid4().hex[:8])
         tmp = os.path.join(self.inbox, name + ".part")
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(payload, fh)
@@ -127,7 +140,7 @@ class Bridge(object):
         raise TimeoutError(
             "no response for {} within {}s. The watcher is not running: check "
             "the Output Log for '[SuperNinja v2] watcher started'."
-            .format(tool, timeout or self.timeout))
+            .format(stem, timeout or self.timeout))
 
 
 # Checks that this test exists to prove. If any of them is skipped rather than
@@ -164,10 +177,34 @@ def skip(name, why):
     print("      {}".format(why))
 
 
+def pie_transition(b, want_play, auto, prompt):
+    """Get the editor into or out of PIE, then confirm it actually happened.
+
+    begin_play and end_play are *requests* the editor services on a later
+    tick, so this polls pie_state rather than trusting the immediate reply.
+    Returns True once the editor is in the wanted state.
+    """
+    if not auto:
+        input(prompt)
+    else:
+        b.control("begin_play" if want_play else "end_play")
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        st = b.control("pie_state")
+        if bool(st.get("in_play_after")) == want_play:
+            return True
+        time.sleep(0.5)
+    return False
+
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bridge-dir")
     ap.add_argument("--report", default="TEST_RESULTS_live.md")
+    ap.add_argument("--auto-pie", action="store_true",
+                    help="drive PIE through the watcher control channel "
+                         "instead of prompting; no keyboard needed")
     ap.add_argument("--skip-pie", action="store_true",
                     help="skip the interactive PIE guard test")
     args = ap.parse_args()
@@ -293,8 +330,11 @@ def main():
     # -- 6. PIE guard (interactive) ----------------------------------------
     if not args.skip_pie:
         print("\n--- PIE guard (interactive) ---")
-        input("Press Alt-P in the Editor to enter Play In Editor, then press "
-              "Enter here... ")
+        ok_in = pie_transition(
+            b, True, args.auto_pie,
+            "Press Alt-P in the Editor to enter Play In Editor, then "
+            "press Enter here... ")
+        check("editor entered PIE", ok_in, "pie_state never reported in_play")
         r = b.send("spawn_actor", label="SNV2_Smoke_PIE", location=[0, 0, 500])
         check("spawn refused during PIE", r.get("ok") is False, r.get("reason"))
         check("world_context reported as PIE", r.get("world_context") == "PIE",
@@ -303,7 +343,10 @@ def main():
               "PIE mode" in (r.get("reason") or ""), r.get("reason"))
         r = b.send("save_level")
         check("save also refused during PIE", r.get("ok") is False, r.get("reason"))
-        input("Press Esc / Stop in the Editor to exit PIE, then press Enter here... ")
+        ok_out = pie_transition(
+            b, False, args.auto_pie,
+            "Press Esc / Stop in the Editor to exit PIE, then press Enter here... ")
+        check("editor left PIE", ok_out, "pie_state still reports in_play")
         r = b.send("bridge_health")
         check("context back to Editor after PIE exit",
               r.get("world_context") == "Editor", r.get("world_context"))
