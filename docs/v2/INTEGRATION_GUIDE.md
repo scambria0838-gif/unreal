@@ -38,13 +38,13 @@ From a clone of this repo on the Windows box:
 
 ```powershell
 cd <this-repo>
+# double-click tools\START_V21_CUTOVER.bat  or:
+python tools\install_v2_onto_editor.py
+python tools\install_v2_onto_editor.py --project "C:\Users\steve\Documents\Unreal Projects\NINJA"
+python tools\install_v2_onto_editor.py --what-if
+python tools\install_v2_onto_editor.py --copy-skill
+# PowerShell twin (same contract):
 powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
-# or, if auto-detect misses the project:
-powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -Project "C:\Users\steve\Documents\Unreal Projects\NINJA"
-# preview only:
-powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -WhatIf
-# also copy SKILL.md to Desktop\skill\superninja-v2\:
-powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -CopySkill
 ```
 
 The script:

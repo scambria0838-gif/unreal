@@ -51,12 +51,14 @@ v2, and it's the one that costs the most time to diagnose by eye.
 
 ---
 
-## 3. `tool_actor_modify` — verified property writes on existing actors
+## 3. `tool_actor_modify` — remaining property writes (transform is shipped)
 
-**The gap.** v2 can create actors and read them back. It cannot *change* one
-except through `execute_python`, which is unverifiable by design. Moving,
-rotating, re-scaling, re-meshing, or re-materialing an existing actor currently
-has no verified path at all.
+**Shipped in v2.1.** `find_actors`, `destroy_actor`, and `set_actor_transform`
+already exist on the five-step envelope. Do not rebuild those.
+
+**The remaining gap.** Re-meshing, re-materialing, and arbitrary property
+writes still go through `execute_python`, which is unverifiable unless you
+pass `expect`.
 
 **What it does.** `{ label | guid, properties: {...}, on_missing }` with the full
 five-step pattern: read current values, apply, re-read, compare per property.

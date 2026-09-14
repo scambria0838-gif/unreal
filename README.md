@@ -51,7 +51,9 @@ Windows Editor box, from a clone of **this repo** (not the Drive v2.0
 delivery zip):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
+python tools\install_v2_onto_editor.py
+# or: tools\START_V21_CUTOVER.bat
+# or: powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
 ```
 
 That backs up v1, copies the three `.py` files, and refuses `.pyc`.
