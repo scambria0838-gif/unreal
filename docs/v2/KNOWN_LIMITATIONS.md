@@ -198,8 +198,10 @@ through the inbox. The watcher is safe for actor-level work - spawn, destroy,
 transform, save - all of which were exercised live. WP level management needs
 a commandlet or the Editor UI.
 
-**This is why there is still no partitioned fixture in NINJA**, and why the
-two World Partition checks in the live smoke test remain SKIP.
+A fixture was created anyway, from a commandlet:
+`/Game/SNV2_WP`, built from `/Engine/Maps/Templates/OpenWorld`. Note the
+commandlet call *returns False* while still creating and saving the asset -
+do not trust its return value, check the disk.
 
 ### What *is* proven about World Partition detection
 
@@ -212,6 +214,38 @@ two World Partition checks in the live smoke test remain SKIP.
 | `/Game/SuperNinja/Maps/PD_Station` | `None` | `false` |
 | a partitioned `/Temp` world | `<Object ... Class 'WorldPartition'>` | `true` |
 
-What remains unproven is the *diff* - that `save_level` writes and verifies
-`__ExternalActors__` files on a partitioned level. That needs a saveable
-partitioned map, which needs the Editor UI to create.
+The *diff* is proven too, live on `/Game/SNV2_WP`:
+
+```
+PASS  external-actor files were written
+PASS  .umap was not used as the evidence
+        + 1/4Y/Q7NY272FPB99Q850ZZA9OT.uasset
+```
+
+> 1 external actor packages added, 0 modified, 0 removed under
+> ...__ExternalActors__\SNV2_WP. .umap mtime changed (not used as evidence
+> for World Partition levels).
+
+## A freshly opened World Partition level fails the save diff
+
+The first smoke run against `/Game/SNV2_WP` failed, immediately after the
+Editor opened it at startup:
+
+```
+FAIL  save ok and verified
+      World Partition save produced no change ... and cleared no dirty
+      package. Nothing was persisted.
+FAIL  external-actor files were written
+      {'added': [], 'removed': [], 'modified': [],
+       'count_before': 139, 'count_after': 139}
+```
+
+The identical sequence run a minute later, on the settled level, passed and
+wrote `142 -> 143`. So the level was still streaming in when the first run
+spawned and saved, and the actor never got an external package.
+
+**The bridge was right both times.** It refused to call the first save a
+success, which is exactly the behaviour this project exists to produce - the
+v1 bridge would have returned ok=true off the `.umap` mtime, which *did*
+change. Treat a WP save failure right after opening a level as "wait and
+retry", not as a bridge defect, and do not relax the check to make it pass.
