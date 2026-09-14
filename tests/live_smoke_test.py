@@ -130,11 +130,38 @@ class Bridge(object):
             .format(tool, timeout or self.timeout))
 
 
+# Checks that this test exists to prove. If any of them is skipped rather than
+# run, the report is not a pass -- it is an unverified run. See skip().
+FLAGSHIP = {
+    "external-actor files were written",
+    ".umap was not used as the evidence",
+    "spawn refused during PIE",
+    "world_context reported as PIE",
+    "refusal message names PIE mode",
+    "save also refused during PIE",
+    "context back to Editor after PIE exit",
+    "nothing leaked into the level from the PIE attempt",
+}
+
+
 def check(name, cond, detail=""):
-    RESULTS.append((name, bool(cond), str(detail)[:400]))
+    RESULTS.append((name, "PASS" if cond else "FAIL", str(detail)[:400]))
     print("{}  {}".format("PASS" if cond else "FAIL", name))
     if not cond and detail:
         print("      {}".format(str(detail)[:400]))
+
+
+def skip(name, why):
+    """Record a check that did not run.
+
+    A skipped check must never shrink the denominator. The bug this whole
+    bridge exists to kill is an operation reporting success when it proved
+    nothing; a test suite that quietly drops its hardest cases is the same
+    bug wearing a lab coat.
+    """
+    RESULTS.append((name, "SKIP", str(why)[:400]))
+    print("SKIP  {}".format(name))
+    print("      {}".format(why))
 
 
 def main():
@@ -243,6 +270,11 @@ def main():
               "not used as evidence" in (r.get("note") or ""), r.get("note"))
         for p in (d.get("added") or [])[:10]:
             print("        + {}".format(p))
+    else:
+        skip("external-actor files were written",
+             "level is not World Partition - no __ExternalActors__ tree to diff")
+        skip(".umap was not used as the evidence",
+             "level is not World Partition - the .umap is the only save evidence")
     check("dirty packages listed", isinstance(r.get("dirty_packages"), list),
           r.get("dirty_packages"))
 
@@ -283,6 +315,12 @@ def main():
                    expect="result == 0")
         check("nothing leaked into the level from the PIE attempt",
               r.get("ok"), r.get("reason"))
+    else:
+        for _n in ("spawn refused during PIE", "world_context reported as PIE",
+                   "refusal message names PIE mode", "save also refused during PIE",
+                   "context back to Editor after PIE exit",
+                   "nothing leaked into the level from the PIE attempt"):
+            skip(_n, "--skip-pie was passed; the PIE guard was never exercised")
 
     # -- 7. cleanup --------------------------------------------------------
     print("\n--- cleanup ---")
@@ -321,7 +359,9 @@ def main():
     with open(args.report, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
     print("Report written to {}".format(args.report))
-    return 0 if passed == total else 1
+    if failed:
+        return 1
+    return 0 if verified else 2
 
 
 if __name__ == "__main__":
