@@ -121,6 +121,55 @@ and do not relax the check to make it pass.
 
 ---
 
+## epic_call: signatures and evidence
+
+Epic's tools are `@unreal.uclass()` UFUNCTIONs, so `inspect.signature()`
+cannot see them. Their annotations do exist -- in the engine's own `.py`
+files -- so the bridge parses the AST to learn that `actor_type` wants a
+`unreal.Class` and `xform` wants a `unreal.Transform`. That is what lets a
+caller pass plain JSON:
+
+```json
+{"toolset": "editor_toolset.toolsets.scene",
+ "tool": "SceneTools.add_to_scene_from_class",
+ "args": {"actor_type": "/Script/Engine.StaticMeshActor",
+          "name": "Thing", "xform": {"location": [900, 100, 250]}}}
+```
+
+`{"describe": true}` returns the signature, parameter types and docstring
+without touching the world -- allowed during PIE, since it changes nothing.
+An unknown parameter is refused *with the signature*, before anything runs.
+
+### What counts as evidence, and two bugs in getting there
+
+`epic_call` verifies by observable effect. Getting the rule right took two
+corrections, both found by testing the verifier rather than trusting it:
+
+1. **False negative.** The first rule was `actor_delta or newly_dirty`. An
+   in-place edit -- adding a component, moving an actor -- moves neither when
+   the package was already dirty from an earlier step, which is the normal
+   case two steps into a plan. It rejected real work.
+2. **False positive.** Widening it to "a package this call touched is dirty"
+   then passed *any read* performed on a level with pending edits. That is
+   strictly worse: it reports proof where there is none.
+
+The rule that survives both: evidence is a package that **became** dirty
+during the call, plus actor delta. When a touched package was already dirty,
+the bridge says exactly that -- it cannot distinguish the change, so save
+first and retry, or declare the tool read-only with `expect_change=false`.
+An honest "I cannot tell" beats a confident answer in either direction.
+
+## A no-op save is not a failed save
+
+`save_level` reported "Nothing was persisted" whenever a World Partition save
+produced no diff -- including when nothing was dirty going in. Those are
+different outcomes and only one is a failure. A save with an empty dirty set
+and an empty diff is now a **verified no-op** (`no_op: true`), because those
+two facts together prove there was nothing to write. A save with dirty
+packages that produces no diff still fails, loudly, as it always did.
+
+---
+
 ## Plan receipts
 
 `execute_plan` takes `"verify_persistence": true` and, after running the

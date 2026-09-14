@@ -548,6 +548,20 @@ def main():
     check("save WP: silent no-op save reported as FAILURE",
           r["ok"] is False and "Nothing was persisted" in r.get("reason", ""), r)
 
+    # The complement. "Nothing needed saving" is not the same outcome as
+    # "something needed saving and vanished", and only the second is a
+    # failure. Reporting both as failure is a false negative that teaches
+    # callers to stop reading the result.
+    EDITOR.save_hook = None
+    EDITOR.dirty_maps = []
+    EDITOR.dirty_content = []
+    EDITOR.save_returns = True
+    r = call("save_level", settle_seconds=0)
+    check("save WP: nothing dirty is a verified no-op, not a failure",
+          r["ok"] and r["verified"] and r.get("no_op") is True, r)
+    check("save WP: the no-op says so plainly",
+          "nothing to persist" in (r.get("note") or ""), r)
+
     # Expectation mismatch: 3 files written but 15 expected.
     EDITOR.save_hook = lambda: [write_ext_actor(project, "C{:05d}Z".format(i))
                                 for i in range(3)]

@@ -1112,6 +1112,21 @@ def tool_save_level(args):
         expect_added = args.get("expect_added")
         expect_removed = args.get("expect_removed")
 
+        # "Nothing needed saving" and "something needed saving and did not
+        # persist" are different outcomes, and only the second is a failure.
+        # Conflating them makes every legitimate no-op save look like data
+        # loss -- a false negative that teaches callers to ignore the check.
+        # This claim is still verified: an empty dirty set going in, and an
+        # empty diff coming out, together prove there was nothing to write.
+        if touched == 0 and not cleared and not dirty_before:
+            return _result(True, True, context, before, after, dirty_after,
+                           verification_method="__ExternalActors__ tree diff",
+                           no_op=True,
+                           note="nothing was dirty before the save and nothing "
+                                "changed in {}, so there was nothing to persist. "
+                                "This is a verified no-op, not a failed save."
+                                .format(ext_root))
+
         if touched == 0 and not cleared:
             return _result(False, False, context, before, after, dirty_after,
                            reason="World Partition save produced no change in {} "
@@ -1337,41 +1352,220 @@ def tool_execute_python(args):
                    executed=True)
 
 
-def _coerce_epic_arg(value):
-    """Turn JSON into the unreal types Epic's toolsets expect.
+def _annotation_name(annotation):
+    """Best-effort name for a parameter annotation.
 
-    Deliberately small. Anything not recognised passes through untouched, so
-    an unsupported type fails loudly inside Epic's own validation rather than
-    being silently mangled here.
+    Epic's toolsets annotate with real unreal types, but some modules use
+    string annotations (PEP 563) and several params are unions such as
+    ``unreal.Actor | None``. Matching on the rendered name handles all three
+    without importing typing machinery.
     """
-    if isinstance(value, dict):
-        kind = value.get("__type")
-        if kind == "actor_label":
-            for a in _all_actors():
-                try:
-                    if a.get_actor_label() == value.get("label"):
-                        return a
-                except Exception:
-                    continue
-            raise ValueError("no actor labelled {!r}".format(value.get("label")))
-        if kind == "class":
-            cls = unreal.load_object(None, value["path"])
-            return cls
-        if kind == "vector":
-            return unreal.Vector(*value["xyz"])
-        if kind == "rotator":
-            return unreal.Rotator(*value["pyr"])
-        if kind == "transform":
+    if annotation is None:
+        return ""
+    if isinstance(annotation, str):
+        return annotation
+    return getattr(annotation, "__name__", None) or str(annotation)
+
+
+def _coerce_by_annotation(value, annotation):
+    """Coerce a JSON value to what an Epic tool's signature asks for.
+
+    The explicit ``{"__type": ...}`` form still wins, so a caller can always
+    override. Without it, the parameter's own annotation decides -- which is
+    the difference between a wrapper you can point at one tool and one you
+    can point at all of Epic's.
+    """
+    if isinstance(value, dict) and "__type" in value:
+        return _coerce_tagged(value)
+
+    name = _annotation_name(annotation)
+
+    if "Actor" in name and "Component" not in name:
+        if isinstance(value, str):
+            return _actor_by_label(value)
+        if isinstance(value, dict) and "label" in value:
+            return _actor_by_label(value["label"])
+    if "Class" in name:
+        if isinstance(value, str):
+            loaded = unreal.load_object(None, value)
+            if loaded is None:
+                raise ValueError("could not load class {!r}".format(value))
+            return loaded
+    if "Transform" in name:
+        if isinstance(value, dict):
             return unreal.Transform(
                 unreal.Vector(*value.get("location", [0, 0, 0])),
                 unreal.Rotator(*value.get("rotation", [0, 0, 0])),
                 unreal.Vector(*value.get("scale", [1, 1, 1])))
-        if kind == "asset":
-            return unreal.load_asset(value["path"])
-        return {k: _coerce_epic_arg(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_coerce_epic_arg(v) for v in value]
+        if isinstance(value, (list, tuple)) and len(value) == 3:
+            return unreal.Transform(unreal.Vector(*value),
+                                    unreal.Rotator(0, 0, 0),
+                                    unreal.Vector(1, 1, 1))
+    if "Rotator" in name and isinstance(value, (list, tuple)):
+        return unreal.Rotator(*value)
+    if "Vector" in name and isinstance(value, (list, tuple)):
+        return unreal.Vector(*value)
+    if "Color" in name and isinstance(value, (list, tuple)):
+        return unreal.LinearColor(*value)
+    if "Text" in name and isinstance(value, str):
+        return unreal.Text(value)
+    if "Name" in name and name.endswith("Name") and isinstance(value, str):
+        return unreal.Name(value)
+    # Asset-ish object parameters: a /Game/... path is unambiguous.
+    if isinstance(value, str) and value.startswith("/") and (
+            "Object" in name or "Asset" in name or "Mesh" in name
+            or "Material" in name or "Texture" in name):
+        loaded = unreal.load_asset(value)
+        if loaded is None:
+            raise ValueError("could not load asset {!r}".format(value))
+        return loaded
     return value
+
+
+def _actor_by_label(label):
+    for a in _all_actors():
+        try:
+            if a.get_actor_label() == label:
+                return a
+        except Exception:
+            continue
+    raise ValueError("no actor labelled {!r}".format(label))
+
+
+def _coerce_tagged(value):
+    """The explicit form: {"__type": "vector", "xyz": [...]} and friends."""
+    kind = value.get("__type")
+    if kind == "actor_label":
+        return _actor_by_label(value.get("label"))
+    if kind == "class":
+        return unreal.load_object(None, value["path"])
+    if kind == "vector":
+        return unreal.Vector(*value["xyz"])
+    if kind == "rotator":
+        return unreal.Rotator(*value["pyr"])
+    if kind == "transform":
+        return unreal.Transform(
+            unreal.Vector(*value.get("location", [0, 0, 0])),
+            unreal.Rotator(*value.get("rotation", [0, 0, 0])),
+            unreal.Vector(*value.get("scale", [1, 1, 1])))
+    if kind == "asset":
+        return unreal.load_asset(value["path"])
+    if kind == "text":
+        return unreal.Text(value["value"])
+    if kind == "name":
+        return unreal.Name(value["value"])
+    raise ValueError("unknown __type {!r}".format(kind))
+
+
+def _epic_signature_from_source(toolset, tool):
+    """Read a tool's annotations out of Epic's own .py file.
+
+    Epic's toolsets are @unreal.uclass() types, so their tools arrive as
+    builtin methods and inspect.signature() cannot see them. The annotations
+    do exist -- in the source, which ships with the engine. Parsing the AST is
+    the only way to learn that `actor_type` wants a Class and `xform` wants a
+    Transform, and that knowledge is what lets a caller pass plain JSON.
+    """
+    import ast as _ast
+    try:
+        module = __import__(toolset, fromlist=["*"])
+        path = getattr(module, "__file__", None)
+        if not path:
+            return None, "module {} has no __file__".format(toolset)
+        with open(path, "r", encoding="utf-8") as fh:
+            tree = _ast.parse(fh.read())
+    except Exception as exc:
+        return None, "could not parse {}: {}".format(toolset, exc)
+
+    parts = tool.split(".")
+    cls_name, fn_name = (parts[0], parts[-1]) if len(parts) > 1 else (None, parts[0])
+
+    def _render(node):
+        if node is None:
+            return ""
+        try:
+            return _ast.unparse(node)
+        except Exception:
+            return ""
+
+    for node in _ast.walk(tree):
+        if not isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+            continue
+        if node.name != fn_name:
+            continue
+        if cls_name:
+            owner = next((c for c in _ast.walk(tree)
+                          if isinstance(c, _ast.ClassDef) and c.name == cls_name
+                          and node in _ast.walk(c)), None)
+            if owner is None:
+                continue
+        a = node.args
+        positional = list(a.posonlyargs) + list(a.args)
+        defaults = list(a.defaults)
+        pad = len(positional) - len(defaults)
+        params = []
+        for idx, arg in enumerate(positional):
+            if arg.arg in ("self", "cls"):
+                continue
+            default = defaults[idx - pad] if idx >= pad else None
+            params.append({
+                "name": arg.arg,
+                "type": _render(arg.annotation),
+                "required": default is None,
+                "default": _render(default)[:120] if default is not None else None,
+            })
+        for arg, default in zip(a.kwonlyargs, a.kw_defaults):
+            params.append({
+                "name": arg.arg,
+                "type": _render(arg.annotation),
+                "required": default is None,
+                "default": _render(default)[:120] if default is not None else None,
+            })
+        rendered = "{}({}) -> {}".format(
+            fn_name,
+            ", ".join("{}: {}".format(x["name"], x["type"] or "?") for x in params),
+            _render(node.returns) or "?")
+        return params, rendered
+    return None, "no def {} found in {}".format(fn_name, toolset)
+
+
+def _epic_signature(target, toolset=None, tool=None):
+    """(params, rendered) for an Epic tool, or (None, reason)."""
+    import inspect
+    try:
+        sig = inspect.signature(target)
+    except Exception:
+        if toolset and tool:
+            return _epic_signature_from_source(toolset, tool)
+        return None, "signature unavailable"
+    params = []
+    for pname, param in sig.parameters.items():
+        params.append({
+            "name": pname,
+            "type": _annotation_name(param.annotation)
+                    if param.annotation is not inspect.Parameter.empty else "",
+            "required": param.default is inspect.Parameter.empty,
+            "default": None if param.default is inspect.Parameter.empty
+                       else str(param.default)[:120],
+        })
+    return params, "{}{}".format(getattr(target, "__name__", "?"), sig)
+
+
+def _resolve_epic_tool(toolset, tool):
+    """(callable, None) or (None, reason)."""
+    try:
+        module = __import__(toolset, fromlist=["*"])
+    except Exception as exc:
+        return None, "cannot import Epic toolset {!r}: {}".format(toolset, exc)
+    target = module
+    try:
+        for part in tool.split("."):
+            target = getattr(target, part)
+    except Exception as exc:
+        return None, "toolset {!r} has no {!r}: {}".format(toolset, tool, exc)
+    if not callable(target):
+        return None, "{}.{} is not callable".format(toolset, tool)
+    return target, None
 
 
 def tool_epic_call(args):
@@ -1409,30 +1603,55 @@ def tool_epic_call(args):
                                  "editor_toolset.toolsets.primitive) and 'tool' "
                                  "(e.g. PrimitiveTools.add_cube)", before)
 
+    target, why = _resolve_epic_tool(toolset, tool)
+    if target is None:
+        return _refused(context, why, before)
+
+    params, rendered = _epic_signature(target, toolset, tool)
+
+    # describe is a read: report the signature without touching the world, so
+    # a caller can discover what an unfamiliar Epic tool wants before running
+    # it. Deliberately allowed during PIE -- it changes nothing.
+    if args.get("describe"):
+        return _result(True, True, context, before, before,
+                       before["dirty_packages"],
+                       epic_tool="{}.{}".format(toolset, tool),
+                       signature=rendered,
+                       parameters=params,
+                       doc=(getattr(target, "__doc__", "") or "")[:1200],
+                       described=True)
+
     refusal = _pie_guard(args, context)
     if refusal:
         return _refused(context, refusal["reason"], before)
 
+    ann = {p["name"]: p["type"] for p in (params or [])}
+    unknown = [k for k in call_args if params is not None and k not in ann]
+    if unknown:
+        return _refused(context,
+                        "{}.{} has no parameter(s) {}. Signature: {}".format(
+                            toolset, tool, ", ".join(sorted(unknown)), rendered),
+                        before)
     try:
-        module = __import__(toolset, fromlist=["*"])
+        kwargs = {k: _coerce_by_annotation(v, ann.get(k))
+                  for k, v in call_args.items()}
     except Exception as exc:
-        return _refused(context, "cannot import Epic toolset {!r}: {}".format(
-            toolset, exc), before)
+        return _refused(context, "could not coerce arguments for {}: {}. "
+                                 "Signature: {}".format(tool, exc, rendered), before)
 
-    target = module
-    try:
-        for part in tool.split("."):
-            target = getattr(target, part)
-    except Exception as exc:
-        return _refused(context, "toolset {!r} has no {!r}: {}".format(
-            toolset, tool, exc), before)
-    if not callable(target):
-        return _refused(context, "{}.{} is not callable".format(toolset, tool), before)
-
-    try:
-        kwargs = {k: _coerce_epic_arg(v) for k, v in call_args.items()}
-    except Exception as exc:
-        return _refused(context, "could not coerce arguments: {}".format(exc), before)
+    # Packages the call is about to touch: anything we resolved to a UObject.
+    # actor_delta and "newly dirty" both miss an in-place edit to a package
+    # that was already dirty, which is the common case two steps into a plan.
+    touched = []
+    for v in kwargs.values():
+        try:
+            if hasattr(v, "get_package"):
+                touched.append(str(v.get_package().get_name()))
+        except Exception:
+            continue
+    before["touched_packages"] = touched
+    before["touched_already_dirty"] = [t for t in touched
+                                       if t in before["dirty_packages"]]
 
     try:
         returned = target(**kwargs)
@@ -1442,6 +1661,7 @@ def tool_epic_call(args):
         return _result(False, False, context, before, after,
                        after["dirty_packages"],
                        reason="Epic tool {}.{} raised: {}".format(toolset, tool, exc),
+                       signature=rendered,
                        traceback=traceback.format_exc())
 
     after = {"actor_count": len(_all_actors()),
@@ -1458,21 +1678,55 @@ def tool_epic_call(args):
     except Exception:
         pass
 
-    changed = bool(after["actor_delta"]) or bool(new_dirty)
+    # A package the call touched being dirty afterwards is evidence the call
+    # mutated it, even when the actor count did not move.
+    for obj in (returned,):
+        try:
+            if obj is not None and hasattr(obj, "get_package"):
+                pkg = str(obj.get_package().get_name())
+                if pkg not in touched:
+                    touched.append(pkg)
+        except Exception:
+            pass
+    # Evidence has to be a package that *became* dirty. Counting one that was
+    # already dirty passes any read performed on a level with pending edits --
+    # a false positive, and strictly worse than the false negative it would
+    # fix, because it reports proof where there is none.
+    touched_newly_dirty = [t for t in touched
+                           if t in after["dirty_packages"]
+                           and t not in before["dirty_packages"]]
+    after["touched_packages"] = touched
+    after["touched_newly_dirty"] = touched_newly_dirty
+
+    changed = (bool(after["actor_delta"]) or bool(new_dirty)
+               or bool(touched_newly_dirty))
     if expect_change and not changed:
+        # Be precise about which of the two failures this is. "Already dirty"
+        # is a limit of the evidence, not proof the tool did nothing, and
+        # saying so is the difference between an actionable result and one
+        # that teaches the caller to switch the check off.
+        if before["touched_already_dirty"]:
+            reason = ("Epic tool {}.{} returned {!r}, but the package(s) it "
+                      "touched were already dirty before the call, so the "
+                      "bridge cannot tell this change apart from the pending "
+                      "ones. Call save_level first and retry, or pass "
+                      "expect_change=false if you know it is read-only."
+                      ).format(toolset, tool, after["epic_returned"])
+        else:
+            reason = ("Epic tool {}.{} returned {!r} but nothing observably "
+                      "changed: actor delta 0, no package became dirty, and no "
+                      "package it touched is dirty. Either it is read-only "
+                      "(pass expect_change=false) or it did not do the work it "
+                      "reported.").format(toolset, tool, after["epic_returned"])
         return _result(False, False, context, before, after,
-                       after["dirty_packages"],
-                       reason="Epic tool {}.{} returned {!r} but nothing "
-                              "observably changed: actor delta 0 and no package "
-                              "became dirty. Either it is read-only (pass "
-                              "expect_change=false) or it did not do the work "
-                              "it reported."
-                              .format(toolset, tool, after["epic_returned"]),
-                       epic_tool="{}.{}".format(toolset, tool))
+                       after["dirty_packages"], reason=reason,
+                       epic_tool="{}.{}".format(toolset, tool),
+                       signature=rendered)
 
     return _result(True, True, context, before, after, after["dirty_packages"],
                    epic_tool="{}.{}".format(toolset, tool),
-                   verification_method="actor delta + dirty-package delta",
+                   verification_method="actor delta + dirty-package delta + "
+                                       "touched-package dirty state",
                    note="Epic's tool ran and changed the world. This does NOT "
                         "prove persistence -- call save_level, and on a World "
                         "Partition level check that the package named in "
