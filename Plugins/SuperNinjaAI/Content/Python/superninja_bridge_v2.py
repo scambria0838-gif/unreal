@@ -420,17 +420,34 @@ def _is_world_partition(level_package_path=None):
     verifier check the .umap timestamp and report a false failure.
     """
     detail = {"method": None, "value": None}
-    try:
-        ws = unreal.GameplayStatics.get_world_settings(_check_world_context()[1])
-        for prop in ("is_partitioned_world", "is_partitioned", "b_is_partitioned"):
+    world = _check_world_context()[1]
+    ws = None
+    # UWorld.get_world_settings() is the route that exists in 5.8. The
+    # GameplayStatics helper is kept second because it is the documented one
+    # in older builds -- but in 5.8 it is absent, and an unguarded call there
+    # threw AttributeError before the property probes below ever ran.
+    for getter in (
+        lambda: world.get_world_settings() if world else None,
+        lambda: unreal.GameplayStatics.get_world_settings(world),
+    ):
+        try:
+            ws = getter()
+        except Exception:
+            continue
+        if ws:
+            break
+    if ws:
+        # "world_partition" holds a UWorldPartition (or None) in 5.8; the
+        # bIsPartitioned-style booleans are older spellings. Order matters:
+        # the first property that exists answers, so the live name leads.
+        for prop in ("world_partition", "is_partitioned_world", "is_partitioned",
+                     "b_is_partitioned"):
             try:
                 val = bool(ws.get_editor_property(prop))
-                detail.update(method="WorldSettings.{}".format(prop), value=val)
-                return val, detail
             except Exception:
                 continue
-    except Exception:
-        pass
+            detail.update(method="WorldSettings.{}".format(prop), value=val)
+            return val, detail
 
     root = _external_actors_root(level_package_path or _current_level_package())
     if root and os.path.isdir(root):
