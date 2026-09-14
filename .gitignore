@@ -10,3 +10,6 @@ Saved/
 Intermediate/
 Binaries/
 DerivedDataCache/
+node_modules/
+skills/game-dev-kit/assets/canvas-game-template/test/screenshots/
+*.log

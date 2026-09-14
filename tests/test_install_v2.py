@@ -15,8 +15,11 @@ sys.path.insert(0, str(REPO / "tools"))
 from install_v2_onto_editor import (  # noqa: E402
     EXPECTED_VERSION,
     InstallError,
+    _copy_tree,
+    game_dev_kit_dest_dirs,
     install,
     skill_dest_dirs,
+    superninja_skill_dest_dirs,
 )
 
 
@@ -65,9 +68,22 @@ class InstallV21Tests(unittest.TestCase):
     def test_skill_dest_includes_kimi_daimon_kit(self):
         dests = [str(p).replace("\\", "/") for p in skill_dest_dirs()]
         joined = " ".join(dests)
-        self.assertTrue(any("game-dev-kit/superninja-v2" in d or "game-dev-kit\\superninja-v2" in d.replace("/", "\\") for d in dests))
+        self.assertTrue(any(d.endswith("skill/game-dev-kit") or d.endswith("skills/game-dev-kit") for d in dests))
+        self.assertTrue(any(d.endswith("superninja-v2") for d in dests))
+        self.assertFalse(any("game-dev-kit/superninja-v2" in d for d in dests))
         self.assertIn("kimi-desktop", joined)
         self.assertIn("daimon-share", joined)
+        self.assertTrue(any("superninja-v2" in str(p) for p in superninja_skill_dest_dirs()))
+        self.assertTrue(any("game-dev-kit" in str(p) for p in game_dev_kit_dest_dirs()))
+
+    def test_copy_tree_writes_kit(self):
+        dest = Path(tempfile.mkdtemp(prefix="kit_dest_")) / "game-dev-kit"
+        src = REPO / "skills" / "game-dev-kit"
+        _copy_tree(src, dest, False)
+        self.assertTrue((dest / "SKILL.md").is_file())
+        self.assertTrue((dest / "scripts" / "new_game.mjs").is_file())
+        self.assertTrue((dest / "references" / "tuning-datasets.md").is_file())
+        self.assertIn("game-dev-kit", (dest / "SKILL.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

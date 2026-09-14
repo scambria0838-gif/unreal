@@ -128,14 +128,20 @@ treat Editor behaviour as verified.
 
 ---
 
-## 6. Optional Desktop skill
+## 6. Optional Desktop + Kimi/Daimon skills
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -CopySkill
+python tools\install_v2_onto_editor.py --copy-skill
 ```
 
-or copy `skills/superninja-v2/SKILL.md` to
-`C:\Users\steve\Desktop\skill\superninja-v2\SKILL.md`.
+Copies:
+
+- `skills/superninja-v2/SKILL.md` → `Desktop\skill\superninja-v2\`
+- the whole `skills/game-dev-kit\` tree →
+  `Desktop\skill\game-dev-kit\` and
+  `%APPDATA%\kimi-desktop\daimon-share\daimon\skills\game-dev-kit\`
+
+`game-dev-kit` is its own skill. Do not nest `superninja-v2` inside it.
 
 ---
 

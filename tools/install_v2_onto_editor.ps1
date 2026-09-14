@@ -176,18 +176,38 @@ if ($CopySkill) {
     if (-not (Test-Path $skillSrc)) { throw "SKILL.md missing in repo" }
     $appData = $env:APPDATA
     if (-not $appData) { $appData = Join-Path $env:USERPROFILE "AppData\Roaming" }
-    $skillDestDirs = @(
+    $snDestDirs = @(
         (Join-Path $env:USERPROFILE "Desktop\skill\superninja-v2"),
-        (Join-Path $appData "kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"),
-        "C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"
+        "C:\Users\steve\Desktop\skill\superninja-v2"
     ) | Select-Object -Unique
-    foreach ($skillDestDir in $skillDestDirs) {
+    foreach ($skillDestDir in $snDestDirs) {
         if ($WhatIf) {
             Write-Host "  WHATIF skill $skillSrc -> $skillDestDir\SKILL.md"
         } else {
             New-Item -ItemType Directory -Force -Path $skillDestDir | Out-Null
             Copy-Item $skillSrc (Join-Path $skillDestDir "SKILL.md") -Force
             Write-Host "  copied SKILL.md -> $skillDestDir"
+        }
+    }
+
+    $kitSrc = Join-Path $repo "skills\game-dev-kit"
+    if (-not (Test-Path (Join-Path $kitSrc "SKILL.md"))) {
+        throw "game-dev-kit SKILL.md missing in repo"
+    }
+    $kitDestDirs = @(
+        (Join-Path $env:USERPROFILE "Desktop\skill\game-dev-kit"),
+        "C:\Users\steve\Desktop\skill\game-dev-kit",
+        (Join-Path $appData "kimi-desktop\daimon-share\daimon\skills\game-dev-kit"),
+        "C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit"
+    ) | Select-Object -Unique
+    foreach ($kitDest in $kitDestDirs) {
+        if ($WhatIf) {
+            Write-Host "  WHATIF skill $kitSrc -> $kitDest"
+        } else {
+            if (Test-Path $kitDest) { Remove-Item -Recurse -Force $kitDest }
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $kitDest) | Out-Null
+            Copy-Item $kitSrc $kitDest -Recurse -Force
+            Write-Host "  copied game-dev-kit -> $kitDest"
         }
     }
 }

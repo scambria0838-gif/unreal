@@ -134,39 +134,79 @@ def copy_py(src: Path, dest_dir: Path, dry_run: bool) -> None:
     print("  copied {}".format(src.name))
 
 
-def skill_dest_dirs() -> list[Path]:
-    """Where Kimi/Daimon and Desktop expect a per-skill SKILL.md."""
-    home = Path.home()
-    appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
-    return [
-        home / "Desktop" / "skill" / "superninja-v2",
-        Path(appdata) / "kimi-desktop" / "daimon-share" / "daimon" / "skills" / "game-dev-kit" / "superninja-v2",
-        Path(r"C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"),
-    ]
-
-
-def copy_skill(repo: Path, dry_run: bool) -> list[Path]:
-    src = repo / "skills" / "superninja-v2" / "SKILL.md"
-    if not src.is_file():
-        src = repo / ".cursor" / "skills" / "superninja-v2" / "SKILL.md"
-    if not src.is_file():
-        raise InstallError("SKILL.md missing in repo")
-    written = []
-    seen = set()
-    for dest_dir in skill_dest_dirs():
-        key = str(dest_dir).lower()
+def _unique_dirs(paths: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    out: list[Path] = []
+    for dest in paths:
+        key = str(dest).replace("\\", "/").lower()
         if key in seen:
             continue
         seen.add(key)
+        out.append(dest)
+    return out
+
+
+def superninja_skill_dest_dirs() -> list[Path]:
+    home = Path.home()
+    return _unique_dirs([
+        home / "Desktop" / "skill" / "superninja-v2",
+        Path(r"C:\Users\steve\Desktop\skill\superninja-v2"),
+    ])
+
+
+def game_dev_kit_dest_dirs() -> list[Path]:
+    """Kimi/Daimon and Desktop expect the kit as its own skill folder."""
+    home = Path.home()
+    appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+    return _unique_dirs([
+        home / "Desktop" / "skill" / "game-dev-kit",
+        Path(r"C:\Users\steve\Desktop\skill\game-dev-kit"),
+        Path(appdata) / "kimi-desktop" / "daimon-share" / "daimon" / "skills" / "game-dev-kit",
+        Path(r"C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit"),
+    ])
+
+
+def skill_dest_dirs() -> list[Path]:
+    """All --copy-skill destinations (superninja-v2 + game-dev-kit)."""
+    return superninja_skill_dest_dirs() + game_dev_kit_dest_dirs()
+
+
+def _copy_tree(src: Path, dest_dir: Path, dry_run: bool) -> Path:
+    if dry_run:
+        print("  WHATIF skill {} -> {}".format(src, dest_dir))
+        return dest_dir
+    dest_dir.parent.mkdir(parents=True, exist_ok=True)
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    shutil.copytree(src, dest_dir)
+    print("  copied skill tree -> {}".format(dest_dir))
+    return dest_dir
+
+
+def copy_skill(repo: Path, dry_run: bool) -> list[Path]:
+    sn_src = repo / "skills" / "superninja-v2" / "SKILL.md"
+    if not sn_src.is_file():
+        sn_src = repo / ".cursor" / "skills" / "superninja-v2" / "SKILL.md"
+    if not sn_src.is_file():
+        raise InstallError("superninja-v2 SKILL.md missing in repo")
+
+    kit_src = repo / "skills" / "game-dev-kit"
+    if not (kit_src / "SKILL.md").is_file():
+        raise InstallError("game-dev-kit SKILL.md missing in repo")
+
+    written: list[Path] = []
+    for dest_dir in superninja_skill_dest_dirs():
         dest = dest_dir / "SKILL.md"
         if dry_run:
-            print("  WHATIF skill {} -> {}".format(src, dest))
-            written.append(dest)
-            continue
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
-        print("  copied SKILL.md -> {}".format(dest_dir))
+            print("  WHATIF skill {} -> {}".format(sn_src, dest))
+        else:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(sn_src, dest)
+            print("  copied SKILL.md -> {}".format(dest_dir))
         written.append(dest)
+
+    for dest_dir in game_dev_kit_dest_dirs():
+        written.append(_copy_tree(kit_src, dest_dir, dry_run))
     return written
 
 

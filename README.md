@@ -23,6 +23,7 @@ tools/
   sn_unreal_nonblocking_phase2.py   cloud-poll / local-8765 hard-reject
   phx_dedupe.py                     PHX_ duplicate cleanup (dry-run)
 .cursor/skills/superninja-v2/  v2-native SKILL.md
+skills/game-dev-kit/           HTML5 Canvas game skill + template
 ```
 
 ## Do not copy `.pyc`
@@ -65,3 +66,19 @@ python tests\live_smoke_test.py --bridge-dir "<Project>\Saved\SuperNinja"
 ```
 
 Full detail: `docs/v2/INTEGRATION_GUIDE.md`.
+
+## game-dev-kit
+
+`skills/game-dev-kit/` is the version-controlled copy of the Canvas
+game skill (template, references, `scripts/new_game.mjs`). On the
+Windows box, `python tools/install_v2_onto_editor.py --copy-skill`
+mirrors it to `Desktop\skill\game-dev-kit` and
+`%APPDATA%\kimi-desktop\daimon-share\daimon\skills\game-dev-kit`.
+
+```bash
+node skills/game-dev-kit/scripts/new_game.mjs /tmp/token-run "Token Run"
+cd /tmp/token-run && npm install && npm run check && npm run smoke
+```
+
+Never ship a kit game that has not passed check, smoke (win AND lose),
+and `npm run test:browser`.
