@@ -173,14 +173,22 @@ if ($CopySkill) {
     if (-not (Test-Path $skillSrc)) {
         $skillSrc = Join-Path $repo ".cursor\skills\superninja-v2\SKILL.md"
     }
-    $skillDestDir = Join-Path $env:USERPROFILE "Desktop\skill\superninja-v2"
     if (-not (Test-Path $skillSrc)) { throw "SKILL.md missing in repo" }
-    if ($WhatIf) {
-        Write-Host "  WHATIF skill $skillSrc -> $skillDestDir\SKILL.md"
-    } else {
-        New-Item -ItemType Directory -Force -Path $skillDestDir | Out-Null
-        Copy-Item $skillSrc (Join-Path $skillDestDir "SKILL.md") -Force
-        Write-Host "  copied SKILL.md -> $skillDestDir"
+    $appData = $env:APPDATA
+    if (-not $appData) { $appData = Join-Path $env:USERPROFILE "AppData\Roaming" }
+    $skillDestDirs = @(
+        (Join-Path $env:USERPROFILE "Desktop\skill\superninja-v2"),
+        (Join-Path $appData "kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"),
+        "C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"
+    ) | Select-Object -Unique
+    foreach ($skillDestDir in $skillDestDirs) {
+        if ($WhatIf) {
+            Write-Host "  WHATIF skill $skillSrc -> $skillDestDir\SKILL.md"
+        } else {
+            New-Item -ItemType Directory -Force -Path $skillDestDir | Out-Null
+            Copy-Item $skillSrc (Join-Path $skillDestDir "SKILL.md") -Force
+            Write-Host "  copied SKILL.md -> $skillDestDir"
+        }
     }
 }
 

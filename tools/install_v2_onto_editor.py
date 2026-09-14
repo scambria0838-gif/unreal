@@ -134,21 +134,40 @@ def copy_py(src: Path, dest_dir: Path, dry_run: bool) -> None:
     print("  copied {}".format(src.name))
 
 
-def copy_skill(repo: Path, dry_run: bool) -> Path:
+def skill_dest_dirs() -> list[Path]:
+    """Where Kimi/Daimon and Desktop expect a per-skill SKILL.md."""
+    home = Path.home()
+    appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+    return [
+        home / "Desktop" / "skill" / "superninja-v2",
+        Path(appdata) / "kimi-desktop" / "daimon-share" / "daimon" / "skills" / "game-dev-kit" / "superninja-v2",
+        Path(r"C:\Users\steve\AppData\Roaming\kimi-desktop\daimon-share\daimon\skills\game-dev-kit\superninja-v2"),
+    ]
+
+
+def copy_skill(repo: Path, dry_run: bool) -> list[Path]:
     src = repo / "skills" / "superninja-v2" / "SKILL.md"
     if not src.is_file():
         src = repo / ".cursor" / "skills" / "superninja-v2" / "SKILL.md"
     if not src.is_file():
         raise InstallError("SKILL.md missing in repo")
-    dest_dir = Path.home() / "Desktop" / "skill" / "superninja-v2"
-    dest = dest_dir / "SKILL.md"
-    if dry_run:
-        print("  WHATIF skill {} -> {}".format(src, dest))
-        return dest
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dest)
-    print("  copied SKILL.md -> {}".format(dest_dir))
-    return dest
+    written = []
+    seen = set()
+    for dest_dir in skill_dest_dirs():
+        key = str(dest_dir).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        dest = dest_dir / "SKILL.md"
+        if dry_run:
+            print("  WHATIF skill {} -> {}".format(src, dest))
+            written.append(dest)
+            continue
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        print("  copied SKILL.md -> {}".format(dest_dir))
+        written.append(dest)
+    return written
 
 
 def install(project: str | None, repo_root: str | None,
@@ -180,7 +199,7 @@ def install(project: str | None, repo_root: str | None,
     for name in SOURCE_FILES:
         copy_py(src_py / name, plug, dry_run)
 
-    skill_dest = None
+    skill_dest = []
     if copy_skill_flag:
         skill_dest = copy_skill(repo, dry_run)
 
@@ -206,7 +225,7 @@ def install(project: str | None, repo_root: str | None,
         "project": str(project_root),
         "plugin": str(plug),
         "bridge_dir": str(bridge_dir),
-        "skill": str(skill_dest) if skill_dest else None,
+        "skill": [str(p) for p in skill_dest],
         "dry_run": dry_run,
         "version": EXPECTED_VERSION,
     }

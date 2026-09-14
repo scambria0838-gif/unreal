@@ -16,6 +16,7 @@ from install_v2_onto_editor import (  # noqa: E402
     EXPECTED_VERSION,
     InstallError,
     install,
+    skill_dest_dirs,
 )
 
 
@@ -60,6 +61,13 @@ class InstallV21Tests(unittest.TestCase):
     def test_refuses_missing_project(self):
         with self.assertRaises(InstallError):
             install("/no/such/ninja/project", str(REPO), False, True)
+
+    def test_skill_dest_includes_kimi_daimon_kit(self):
+        dests = [str(p).replace("\\", "/") for p in skill_dest_dirs()]
+        joined = " ".join(dests)
+        self.assertTrue(any("game-dev-kit/superninja-v2" in d or "game-dev-kit\\superninja-v2" in d.replace("/", "\\") for d in dests))
+        self.assertIn("kimi-desktop", joined)
+        self.assertIn("daimon-share", joined)
 
 
 if __name__ == "__main__":
