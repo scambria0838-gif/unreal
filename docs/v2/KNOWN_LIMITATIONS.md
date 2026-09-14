@@ -170,3 +170,48 @@ an actor saved, `__ExternalActors__/<Level>/` doesn't exist yet, so the fallback
 says "not partitioned" and the save is verified against the `.umap`. The first
 save on such a level may therefore be verified by the weaker method. Once any
 actor has been saved externally, detection is correct from then on.
+
+## World Partition through the watcher crashes UE 5.8 (found 2026-09-13, live)
+
+Creating or opening a World Partition level from inside the watcher's Slate
+post-tick callback kills the Editor:
+
+```
+Assertion failed: !FWorldPartitionLoadingContext::IsDeferringRawObjects()
+  Engine/Private/WorldPartition/ActorDescContainerInstance.cpp:209
+  [Callstack] UnrealEditor-PythonScriptPlugin.dll -> python311.dll
+```
+
+Reproduced by sending `execute_python` calling
+`LevelEditorSubsystem.new_level_from_template('/Game/X',
+'/Engine/Maps/Templates/OpenWorld')` through `sn_inbox`. The Editor took the
+request, hit the assertion, and shut down. Nothing was written; no project
+content was damaged.
+
+The same call in a `-run=pythonscript` commandlet does **not** crash - it
+returns `False`. So the hazard is the deferred-tick context the watcher
+dispatches in, not the call itself. World Partition loading defers raw objects
+and the post-tick dispatch lands inside that window.
+
+**Consequence.** Do not drive World Partition level creation or loading
+through the inbox. The watcher is safe for actor-level work - spawn, destroy,
+transform, save - all of which were exercised live. WP level management needs
+a commandlet or the Editor UI.
+
+**This is why there is still no partitioned fixture in NINJA**, and why the
+two World Partition checks in the live smoke test remain SKIP.
+
+### What *is* proven about World Partition detection
+
+`_is_world_partition()` was verified in both directions against a live 5.8
+`unreal` module, via the authoritative property rather than the
+`__ExternalActors__` filesystem fallback:
+
+| World | raw `WorldSettings.world_partition` | bridge |
+|---|---|---|
+| `/Game/SuperNinja/Maps/PD_Station` | `None` | `false` |
+| a partitioned `/Temp` world | `<Object ... Class 'WorldPartition'>` | `true` |
+
+What remains unproven is the *diff* - that `save_level` writes and verifies
+`__ExternalActors__` files on a partitioned level. That needs a saveable
+partitioned map, which needs the Editor UI to create.
