@@ -1,4 +1,4 @@
-# SuperNinja v2.1 cutover — run on the Windows Editor box.
+# SuperNinja v2.1 cutover - run on the Windows Editor box.
 # This Cloud Agent cannot reach C:\ or restart Unreal. You run this locally.
 #
 #   powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
@@ -39,13 +39,13 @@ function Find-ProjectRoot {
     param([string]$Hint)
     $guesses = @()
     if ($Hint) { $guesses += $Hint }
-    $home = $env:USERPROFILE
-    if ($home) {
+    $userHome = $env:USERPROFILE
+    if ($userHome) {
         $guesses += @(
-            (Join-Path $home "Documents\Unreal Projects\NINJA"),
-            (Join-Path $home "OneDrive\Documents\Unreal Projects\NINJA"),
-            (Join-Path $home "Documents\Unreal Projects\ninja"),
-            (Join-Path $home "OneDrive\Documents\Unreal Projects\ninja")
+            (Join-Path $userHome "Documents\Unreal Projects\NINJA"),
+            (Join-Path $userHome "OneDrive\Documents\Unreal Projects\NINJA"),
+            (Join-Path $userHome "Documents\Unreal Projects\ninja"),
+            (Join-Path $userHome "OneDrive\Documents\Unreal Projects\ninja")
         )
     }
     $guesses += @(
@@ -73,15 +73,23 @@ function Find-PluginPython {
     param([string]$ProjectRoot)
     $preferred = @(
         (Join-Path $ProjectRoot "Plugins\SuperNinjaAI\Content\Python"),
+        (Join-Path $ProjectRoot "Plugins\SuperNinja\Content\Python"),
         (Join-Path $ProjectRoot "Plugins\ninja\Content\Python")
     )
     foreach ($p in $preferred) {
         if (Test-Path $p) { return $p }
     }
-    $hits = Get-ChildItem -Path (Join-Path $ProjectRoot "Plugins") -Recurse -Filter "superninja_bridge.py" -ErrorAction SilentlyContinue |
-        Select-Object -ExpandProperty DirectoryName
-    if ($hits) { return $hits[0] }
-    throw "No SuperNinja Python folder under $ProjectRoot\Plugins. Expected SuperNinjaAI\Content\Python or ninja\Content\Python."
+    # Plugins are often junctions to a tree outside the project, so the search
+    # has to follow reparse points. Prefer a folder that already holds a bridge;
+    # fall back to any plugin that auto-runs Python.
+    $pluginRoot = Join-Path $ProjectRoot "Plugins"
+    foreach ($marker in @("superninja_bridge.py", "init_unreal.py")) {
+        $hits = Get-ChildItem -Path $pluginRoot -Recurse -Force -FollowSymlink -Filter $marker -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -like "*\Content\Python" } |
+            Select-Object -ExpandProperty DirectoryName -Unique
+        if ($hits) { return @($hits)[0] }
+    }
+    throw "No SuperNinja Python folder under $ProjectRoot\Plugins. Expected SuperNinjaAI\Content\Python, SuperNinja\Content\Python or ninja\Content\Python."
 }
 
 function Assert-NoPyc {
@@ -228,7 +236,7 @@ Write-Host "  1. Restart the Unreal Editor."
 Write-Host "  2. Output Log must show:"
 Write-Host "       [SuperNinja v2] watcher started"
 Write-Host "       v$ExpectedVersion registered, $ExpectedToolCount tools"
-Write-Host "     Reject v2.0.0 / 9 tools — that is the old Drive delivery zip."
+Write-Host "     Reject v2.0.0 / 9 tools - that is the old Drive delivery zip."
 Write-Host "  3. Live smoke (Windows only):"
 Write-Host "       python `"$smoke`" --bridge-dir `"$bridgeDir`""
 Write-Host "Until step 3 passes, treat every Editor claim as unverified-until-live."
