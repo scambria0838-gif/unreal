@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.uasset
+*.umap
+Saved/
+Intermediate/
+Binaries/
+DerivedDataCache/
+node_modules/
+skills/game-dev-kit/assets/canvas-game-template/test/screenshots/
+*.log

@@ -1,0 +1,62 @@
+{
+    "FileVersion": 3,
+    "Version": 2,
+    "VersionName": "2.1.0",
+    "FriendlyName": "SuperNinja AI",
+    "Description": "AI-driven Unreal Editor automation with a verification layer: every write tool re-reads its target before reporting success, refuses writes during Play In Editor, guards against duplicate actors, and verifies World Partition saves against the __ExternalActors__ tree.",
+    "Category": "AI Tools",
+    "CreatedBy": "NinjaTech AI",
+    "CreatedByURL": "https://www.ninjatech.ai",
+    "DocsURL": "https://www.ninjatech.ai/docs/superninja-ue",
+    "MarketplaceURL": "",
+    "SupportURL": "https://www.ninjatech.ai/support",
+    "CanContainContent": true,
+    "IsBetaVersion": true,
+    "IsExperimentalVersion": false,
+    "Installed": false,
+    "EnabledByDefault": true,
+    "Modules": [
+        {
+            "Name": "SuperNinjaAI",
+            "Type": "Runtime",
+            "LoadingPhase": "Default",
+            "PlatformAllowList": [
+                "Win64",
+                "Mac",
+                "Linux"
+            ]
+        },
+        {
+            "Name": "SuperNinjaAIEditor",
+            "Type": "Editor",
+            "LoadingPhase": "PostEngineInit",
+            "PlatformAllowList": [
+                "Win64",
+                "Mac",
+                "Linux"
+            ]
+        }
+    ],
+    "Plugins": [
+        {
+            "Name": "PythonScriptPlugin",
+            "Enabled": true
+        },
+        {
+            "Name": "EditorScriptingUtilities",
+            "Enabled": true
+        },
+        {
+            "Name": "RemoteControl",
+            "Enabled": true
+        },
+        {
+            "Name": "RemoteControlAPI",
+            "Enabled": true
+        },
+        {
+            "Name": "HTTP",
+            "Enabled": true
+        }
+    ]
+}
