@@ -627,6 +627,25 @@ def main():
     r = json.loads(bridge.execute_plan(json.dumps(dict(plan, dry_run=True))))
     check("plan: dry_run executes nothing", r["dry_run"] is True, r)
 
+    # all([]) is True, so the obvious aggregation reports a pass for a plan
+    # that ran nothing. That is this project's own bug, one layer up.
+    r = json.loads(bridge.execute_plan(json.dumps({"steps": []})))
+    check("plan: an empty plan is a failure, not a vacuous pass",
+          r["ok"] is False and r["verified"] is False, r)
+    check("plan: empty plan says why", "proved nothing" in (r.get("reason") or ""), r)
+
+    r = json.loads(bridge.execute_plan(json.dumps({
+        "steps": [{"id": "p1", "tool": "spawn_actor",
+                   "args": {"label": "PlanPersist_A"}}],
+        "verify_persistence": True})))
+    pers = r.get("persistence")
+    check("plan: verify_persistence reconciles claims against disk",
+          isinstance(pers, dict) and "claimed" in pers and "unproven" in pers, pers)
+    check("plan: reconciliation names the step behind each claim",
+          isinstance(pers, dict) and isinstance(pers.get("claimed_by_step"), dict), pers)
+    check("plan: unproven claims sink the whole plan",
+          (not pers.get("unproven")) or (r["ok"] is False and r["verified"] is False), r)
+
     print("\n--- first-class actor / camera / save-as tools ---")
     r = call("find_actors", name_contains="Smoke")
     check("find_actors: verified read", r["ok"] and r["verified"] and r["count"] >= 1, r)

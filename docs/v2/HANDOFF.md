@@ -121,6 +121,46 @@ and do not relax the check to make it pass.
 
 ---
 
+## Plan receipts
+
+`execute_plan` takes `"verify_persistence": true` and, after running the
+steps, saves once and reconciles **every package the steps claimed against
+the files actually on disk**:
+
+```
+ok: True | verified: True | steps: 2
+claimed   : ['RB/C58JCLWZK0MYIXIB0XOJAX', 'WB/DI19S73EM917Z7QP5ZVPPZ']
+proven    : ['RB/C58JCLWZK0MYIXIB0XOJAX', 'WB/DI19S73EM917Z7QP5ZVPPZ']
+unproven  : []
+unclaimed : []
+by_step   : {'RB/C58JCL...': 'p3-a', 'WB/DI19S7...': 'p3-b'}
+```
+
+If any claimed package is missing, the **whole plan** fails and
+`unproven_steps` names which step is responsible. That is the part no other
+tool in this space does: at a thousand chained operations, knowing that
+something did not persist is useless unless you know *which* something.
+
+`unclaimed_on_disk` lists files the save wrote that no step claimed. Not a
+failure — earlier unsaved edits legitimately flush here — but an unexplained
+pile of them means the plan is not the only thing touching the level.
+
+An empty plan returns `ok=false`. `all([])` is `True`, so the obvious
+aggregation reports a pass for a plan that ran nothing; that was a live bug
+in `execute_plan` until 2.2.0.
+
+### One unexplained observation
+
+During the first plan run, two consecutive reads of the same outbox file
+returned different payloads — the first showing three unproven packages with
+GUIDs that appear nowhere in the settled result. `write_result` uses
+tmp + `os.replace`, so a torn read should be impossible, and it did not
+reproduce across two further runs. Cause unknown. Recorded rather than
+explained away: if a client ever sees a receipt whose `claimed` tokens match
+no step, re-read before acting on it.
+
+---
+
 ## Gotchas that cost real time
 
 - **World Partition through the watcher crashes UE 5.8.** Creating or opening a

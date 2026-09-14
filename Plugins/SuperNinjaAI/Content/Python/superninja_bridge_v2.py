@@ -1953,13 +1953,124 @@ class SuperNinjaBridge(object):
                 break
 
         remaining = len(plan.get("steps", [])) - len(results)
-        return json.dumps({
-            "ok": all(r["result"].get("ok") for r in results) and not halted,
-            "verified": all(r["result"].get("verified") for r in results),
+
+        # A plan that ran nothing proved nothing. all([]) is True, so the
+        # obvious aggregation hands back ok=true/verified=true for an empty
+        # plan -- the same vacuous pass this bridge exists to eliminate,
+        # one layer up.
+        if not results:
+            return json.dumps({
+                "ok": False, "verified": False,
+                "reason": "plan executed no steps, so it proved nothing. "
+                          "An empty plan is a failure, not a pass.",
+                "dry_run": plan_dry_run, "halted_at": halted,
+                "steps_executed": 0,
+                "steps_skipped": max(remaining, 0),
+                "results": [], "bridge_version": BRIDGE_VERSION,
+            }, default=str)
+
+        steps_ok = all(r["result"].get("ok") for r in results)
+        steps_verified = all(r["result"].get("verified") for r in results)
+
+        persistence = None
+        if plan.get("verify_persistence") and not plan_dry_run:
+            persistence = self._reconcile_persistence(results)
+
+        ok = steps_ok and not halted
+        verified = steps_verified
+        reason = None
+        if persistence is not None:
+            if persistence.get("unproven"):
+                ok = False
+                verified = False
+                reason = ("{} of {} claimed package(s) are not on disk after "
+                          "save: {}. The steps reported success; the files are "
+                          "not there.").format(
+                              len(persistence["unproven"]),
+                              len(persistence["claimed"]),
+                              ", ".join(persistence["unproven"][:5]))
+            elif not persistence.get("save_ok"):
+                ok = False
+                verified = False
+                reason = ("steps succeeded but the plan's save did not verify: "
+                          "{}".format(persistence.get("save_reason")))
+
+        out = {
+            "ok": ok, "verified": verified,
             "dry_run": plan_dry_run,
             "halted_at": halted,
             "steps_executed": len(results),
             "steps_skipped": max(remaining, 0),
             "results": results,
             "bridge_version": BRIDGE_VERSION,
-        }, default=str)
+        }
+        if reason:
+            out["reason"] = reason
+            out["error"] = reason
+        if persistence is not None:
+            out["persistence"] = persistence
+        return json.dumps(out, default=str)
+
+    @staticmethod
+    def _package_token(path):
+        """Last two segments of an external-actor package path.
+
+        Steps report a package name (/Game/__ExternalActors__/Map/D/38/ABC);
+        the save diff reports a relative file (D/38/ABC.uasset). Matching on
+        the tail is what links a step's claim to a file on disk.
+        """
+        cleaned = str(path).replace("\\", "/").rstrip("/")
+        if cleaned.endswith(".uasset"):
+            cleaned = cleaned[: -len(".uasset")]
+        parts = [p for p in cleaned.split("/") if p]
+        return "/".join(parts[-2:]) if len(parts) >= 2 else cleaned
+
+    def _reconcile_persistence(self, results):
+        """Save, then match every package the steps claimed against the disk.
+
+        This is the plan-level version of the rule. Each step already proves
+        its own change; this proves the *set* of them survived a save, and
+        names which step is responsible for anything that did not. Without it
+        a long plan can report N successes and leave you to work out which of
+        the N is missing from the level.
+        """
+        claimed, by_step = [], {}
+        for entry in results:
+            after = (entry.get("result") or {}).get("after") or {}
+            pkgs = []
+            pkg = after.get("epic_returned_package")
+            if pkg:
+                pkgs.append(pkg)
+            for d in (after.get("newly_dirty_packages") or []):
+                if "__ExternalActors__" in str(d):
+                    pkgs.append(d)
+            for pkg in pkgs:
+                token = self._package_token(pkg)
+                if token not in claimed:
+                    claimed.append(token)
+                    by_step[token] = entry.get("step") or entry.get("tool")
+
+        save = json.loads(self.execute_tool("save_level", json.dumps({})))
+        diff = ((save.get("after") or {}).get("external_actor_diff") or {})
+        on_disk = {self._package_token(f)
+                   for f in (diff.get("added") or []) + (diff.get("modified") or [])}
+
+        proven = [t for t in claimed if t in on_disk]
+        unproven = [t for t in claimed if t not in on_disk]
+        # Files the save wrote that no step claimed. Not a failure -- earlier
+        # unsaved edits legitimately flush here -- but an unexplained pile of
+        # these means the plan is not the only thing touching the level, and
+        # you want to know that before you trust the receipt.
+        unclaimed = sorted(t for t in on_disk if t not in claimed)
+        return {
+            "claimed": claimed,
+            "claimed_by_step": by_step,
+            "proven_on_disk": proven,
+            "unproven": unproven,
+            "unproven_steps": [by_step.get(t) for t in unproven],
+            "unclaimed_on_disk": unclaimed,
+            "save_ok": bool(save.get("ok") and save.get("verified")),
+            "save_reason": save.get("reason"),
+            "save_verification_method": save.get("verification_method"),
+            "external_actor_diff": diff,
+        }
