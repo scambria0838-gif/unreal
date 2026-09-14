@@ -1,15 +1,15 @@
-# SuperNinja v2.1 Handoff
+# SuperNinja v2.2 Handoff
 
-The bridge exists and passes static tests. **It is not installed.** Nothing
-about its behaviour inside a running Editor has been observed by anyone.
+The bridge is **installed, running, and live-verified**. A full-pass
+`TEST_RESULTS_live.md` exists: 26 checks, 0 failures, 0 skips.
 
 Prepared 2026-09-14. Repo `scambria0838-gif/unreal` · PR #3 · Project NINJA
-(UE 5.8). Blocked on the live smoke test.
+(UE 5.8) at `C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA`.
 
-One sentence for the next chat: **SuperNinja v2.1 (14 tools) is in PR #3 of
-`scambria0838-gif/unreal` and has never been installed; the Editor is still
-on v1; the only remaining work is install, restart, run
-`tests/live_smoke_test.py`, and paste `TEST_RESULTS_live.md` back.**
+One sentence for the next chat: **SuperNinja v2.2.0 (15 tools) is installed as
+a Python-only sidecar beside the existing SuperNinja Premium plugin, the live
+smoke test passes 26/26 with `--auto-pie`, and the remaining work is to widen
+`epic_call` across Epic's ~1,035 toolset tools.**
 
 ---
 
@@ -17,212 +17,170 @@ on v1; the only remaining work is install, restart, run
 
 An agent that can change an Unreal scene and **prove the change survived**.
 
-Every failure this project exists to fix is the same failure: a write
-reported success when nothing persisted. Fifty-three duplicate `PHX_`
-actors. Spawns that vanished on PIE exit. A `save_level` that returned
-true while the World Partition tree went untouched.
+Every failure this project exists to fix is the same failure: a write reported
+success when nothing persisted. Fifty-three duplicate `PHX_` actors. Spawns
+that vanished on PIE exit. A `save_level` that returned true while the World
+Partition tree went untouched.
 
-The rule the architecture hangs off: **a tool that cannot verify its own
-change returns `ok=false`.** "I could not confirm" is a failure, never a
-success. Do not weaken `_result()`.
+The rule the architecture hangs off: **a tool that cannot verify its own change
+returns `ok=false`.** "I could not confirm" is a failure, never a success.
+Do not weaken `_result()`.
+
+That rule has now caught a real case in the wild. See "the save that lied".
 
 ---
 
-## Three versions. Confusing them wastes the session.
+## What is installed
 
-| Version | Tools | Where | Status |
-|---|---|---|---|
-| v1 | 8 | Running in the Editor right now | Live. All five original bugs. |
-| v2.0.0 | 9 | Local `SUPERNINJA_V2_COMPLETE\` and the Drive zip | **Superseded. Do not install.** |
-| v2.1.0 | 14 | This repo, PR #3 | **Target. Install from the repo, never the zip.** |
+`Plugins/SuperNinjaAI/` in the NINJA project — a **Python-only sidecar**:
+`"Modules": []`, so no C++ and no compile prompt. It sits beside the
+pre-existing `Plugins/SuperNinja` (SuperNinja Premium v3.0, HTTP bridge on
+:8765), which is untouched. Both mount; `bridge_health` reports
+`installed_plugins: ["SuperNinja", "SuperNinjaAI"]` and
+`conflicting_plugins: []`.
 
-v2.1 adds `find_actors`, `destroy_actor`, `set_actor_transform`,
-`set_viewport_camera`, `save_level_as` on top of the original nine.
-
-After restart, the Output Log must say `v2.1.0 registered, 14 tools`. If
-it says `v2.0.0` or `9 tools`, the old delivery won — delete
-`Content/Python/superninja_bridge*.py` by hand and re-run the installer.
+Transport is the inbox/outbox file watcher on a Slate post-tick callback:
+`<Project>/Saved/SuperNinja/sn_inbox` to `sn_outbox`, 750 ms poll.
 
 ---
 
 ## Evidence ledger
 
-A fresh session should treat anything not marked **Verified** as an open
-question. "Verified in-repo" is not "verified in the Editor."
-
 | Claim | Status | How it is known |
 |---|---|---|
-| v2.1.0 exists; `TOOLS` has 14 keys; `_result()` forces `ok=false` when `verified` is false | **Verified in-repo** | Source read this session; `BRIDGE_VERSION` and `TOOLS` parsed; identity tests import the module |
-| Installer backs up v1, copies only three `.py`, refuses `.pyc` / `__pycache__` | **Verified in-repo** | `tools/install_v2_onto_editor.py` read; fixture install in `test_install_v2.py` |
-| Offline harness + envelope/poller + installer + kit + identity tests pass | **Verified static** | Re-run this session. Proves decision logic, **not** the UE API |
-| `bridge_health` reports `tool_count` and `tools`; live smoke fail-fasts on 2.0.0 / 9 tools | **Verified static** | Added so a stale zip cannot look green |
-| Partition / import / save fallbacks are coded (`is_partitioned_*`, `imported_object_paths`, `save_current_level`) | **Verified in-repo** | Read in `superninja_bridge_v2.py`. Names still unverified against live UE 5.8 |
-| PIE refusal, `on_duplicate`, and World Partition save against a real `unreal` module | **Unverified** | Requires a running Editor. No one has observed this |
-| NINJA_ENGINE_v1.9 is React + Three.js + Vite (browser, not Unreal) | **Verified (Drive metadata)** | `package.json` / README from Drive folder `1UlNt0qaQUoIT-1ueFmvdghOXOV_e4AO4`. Not in this repo. Not executed here |
-| Engine `src/`, `.grok/skills/`, `server/` contents | **Unread as a corpus** | Do not import Engine into this repo |
-
-`docs/v2/TEST_RESULTS.md` used to say 58/58 (nine tools). That number is
-stale. Current harness count is **74/74**. `NEXT_SKILLS.md` already marks
-`find_actors` / `destroy_actor` / `set_actor_transform` as shipped.
+| v2.2.0 registers 15 tools in a real Editor | **Verified live** | Output Log after restart; `bridge_health` payload |
+| Read-after-write on spawn / transform / destroy | **Verified live** | Smoke test on `/Game/SNV2_WP` |
+| Duplicate-label guard refuses; `skip` and `replace` behave | **Verified live** | Smoke test |
+| PIE guard refuses writes; nothing leaks on exit | **Verified live** | Smoke test with `--auto-pie` |
+| WP save diffs `__ExternalActors__`, refuses `.umap` mtime as evidence | **Verified live** | One package added, 143 to 144 |
+| `_is_world_partition()` answers via `WorldSettings.world_partition` | **Verified live, both directions** | `None` on PD_Station; a `UWorldPartition` object on a partitioned world |
+| `epic_call` runs Epic's toolset functions and verifies the effect | **Verified live (manual)** | `SceneTools.add_to_scene_from_class` + `PrimitiveTools.add_cube`, then `save_level` diffed the exact package Epic named |
+| Epic's MCP answers on :8000; 55 toolsets, ~1,035 tools | **Verified live** | Enumerated via `list_toolsets` / `describe_toolset` |
+| Offline harness 74/74, plus envelope, install, kit, identity | **Verified static** | Re-run. Proves decision logic, not the UE API |
+| `phx_dedupe.py` does its job | **No target** | Zero `PHX_` actors across all nine maps in NINJA |
+| `epic_call` beyond the two tools exercised by hand | **Unverified** | Only `SceneTools.add_to_scene_from_class` and `PrimitiveTools.add_cube` have been run. The argument coercion layer covers actor/class/vector/rotator/transform/asset and nothing else |
+| The ~1,035 tool count | **Approximate** | Regex over `describe_toolset` text, not an audited figure. The 55 toolsets are exact |
+| Where the 53 `PHX_` duplicates actually live | **Unverified** | Not in NINJA. Never located. The bridge has never met the scene it was built for |
 
 ---
 
 ## Definition of done
 
-Until all three hold, the project is incomplete regardless of how much
-code exists or how many static tests pass.
-
-1. The running Editor reports `v2.1.0` and `14 tools` — not v1, not the 9-tool zip.
-2. `tests/live_smoke_test.py` produces a full-pass `TEST_RESULTS_live.md` on that machine.
-3. The `PHX_` duplicate cleanup has been previewed, applied, and saved through the verified `save_level` path.
-
-A cloud session cannot do any of this. There is no `C:\` and no Editor.
+1. ~~The running Editor reports the expected version and tool count.~~ **Met.**
+2. ~~`tests/live_smoke_test.py` produces a full-pass `TEST_RESULTS_live.md`.~~
+   **Met** — 26 passed, 0 failed, 0 skipped.
+3. The `PHX_` cleanup — **no target exists.** `phx_dedupe.py` filters level
+   actors by the `PHX_` prefix; every map in NINJA returns zero. Either they
+   were cleaned before this work or the affected project is elsewhere. Find out
+   which before closing this gate or dropping it.
 
 ---
 
-## Procedure — Windows box only
+## Reproducing the verified run
 
-### 1. Get this repo on disk
+The run must happen on a World Partition level, or the two external-actor
+checks skip and the report reads NOT VERIFIED. The fixture is `/Game/SNV2_WP`.
+The Editor will not reliably open it — a map name on the command line is
+ignored — so set it in `Config/DefaultEngine.ini`:
 
-If `C:\Users\steve\Desktop\unreal` already exists, fetch the PR branch.
-Do not assume a missing clone; do not assume it is current.
-
-```bat
-cd C:\Users\steve\Desktop
-if not exist unreal\.git git clone https://github.com/scambria0838-gif/unreal.git
-cd unreal
-git fetch origin
-git checkout cursor/superninja-v2-source-of-truth-97ac
-git pull origin cursor/superninja-v2-source-of-truth-97ac
-dir tools\install_v2_onto_editor.ps1
+```ini
+[/Script/EngineSettings.GameMapsSettings]
+EditorStartupMap=/Game/SNV2_WP.SNV2_WP
 ```
 
-`tools\install_v2_onto_editor.ps1` must exist before continuing.
-
-### 2. Install onto NINJA (from this repo)
-
-Preferred (copies skills too):
-
-```bat
-tools\START_V21_CUTOVER.bat
-```
-
-Or:
+Restart, let World Partition finish streaming (a run against a freshly-opened
+WP level fails — see below), then:
 
 ```powershell
-python tools\install_v2_onto_editor.py --copy-skill
-# if auto-detect misses the project:
-python tools\install_v2_onto_editor.py --copy-skill --project "C:\Users\steve\Documents\Unreal Projects\NINJA"
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
+python tests\live_smoke_test.py --bridge-dir "C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA\Saved\SuperNinja" --auto-pie
 ```
 
-Copies exactly three files into the plugin `Content/Python/`:
-`superninja_bridge_v2.py`, `superninja_bridge.py`, `init_unreal.py`.
-
-Never copy `__pycache__` or `*.cpython-314.pyc`. Those are CPython 3.14
-bytecode. UE 5.8 runs Python 3.11.
-
-`--copy-skill` writes `superninja-v2` and `game-dev-kit` as **sibling**
-folders under `Desktop\skill\` (and the kit also into Daimon). Do not
-nest SuperNinja under the kit.
-
-### 3. Restart and confirm identity
-
-Close the Editor fully, reopen NINJA, then read
-Window → Developer Tools → Output Log. Two lines must appear:
-
-```
-[SuperNinja v2] watcher started
-[SuperNinja v2] v2.1.0 registered, 14 tools: ...
-```
-
-Note the inbox path it prints (`...\Saved\SuperNinja\sn_inbox`). The next
-step needs the parent directory.
-
-### 4. Live smoke (the only evidence that matters)
-
-```powershell
-python tests\live_smoke_test.py --bridge-dir "C:\Users\steve\Documents\Unreal Projects\NINJA\Saved\SuperNinja"
-```
-
-This is the only evidence that matters. It fail-fasts if health is not
-v2.1.0 / 14 tools. It exercises PIE refusal, `on_duplicate`, World
-Partition `__ExternalActors__` diffs, and persistence. Two prompts need
-you at the keyboard (Alt-P, then Stop).
-
-### 5. PHX_ cleanup — only once the smoke test is green
-
-In the Editor Python console:
-
-```
-exec(open(r"C:\Users\steve\Desktop\unreal\tools\phx_dedupe.py").read())
-run(apply=False, save=False)   # preview first — always
-run(apply=True,  save=True)    # then apply through verified save_level
-```
-
-Adjust the path if the clone is not on the Desktop.
-
-### 6. Close the loop
-
-Keep `TEST_RESULTS_live.md` and the Output Log excerpt. Paste both into
-the next session. Merge PR #3 only once live-green.
+`--auto-pie` drives Play-In-Editor through the watcher's control channel, so no
+keyboard is needed. Without it the test prompts for Alt-P and Stop.
 
 ---
 
-## If the smoke test fails
+## The save that lied
 
-The expected failure mode is an Unreal Python API name mismatch, not a
-logic error. Three were flagged in advance:
+The first smoke run against `/Game/SNV2_WP` **failed**, immediately after the
+Editor opened it:
 
-- WorldSettings partition property names — `is_partitioned_world` vs
-  `is_partitioned` vs `b_is_partitioned` (the bridge already tries all three)
-- `AssetImportTask.imported_object_paths`
-- The return type of `save_current_level`
+```
+FAIL  save ok and verified
+      World Partition save produced no change ... Nothing was persisted.
+      {'added': [], 'count_before': 139, 'count_after': 139}
+```
 
-Fix these in the repo against the live log. **Do not weaken `_result()`.**
-Loosening the verification rule to make a test pass reintroduces the
-exact bug the project exists to kill, and it will do so invisibly.
+The identical sequence a minute later passed and wrote 142 to 143. The level
+was still streaming; the actor never got an external package.
 
----
-
-## After green — not before
-
-1. **`tool_scene_diff`** — one scene verdict. Stops the PHX_ class of bug.
-   Worth more than asset_validate, batch_spawn, and Blueprint edit combined.
-2. A shared skill corpus with a `runtime:` tag (`ue5` / `browser` / `both`)
-   is the right *shape* for SuperNinja + Ninja Engine. Doing it before
-   live green writes `ue5` tags for tools nobody has confirmed exist.
-3. Do **not** import NINJA_ENGINE into this repo. Two runtimes. Combining
-   them produces something that looks substantial and does nothing.
-
-`docs/v2/NEXT_SKILLS.md` is the ranked list. `set_actor_transform`,
-`destroy_actor`, and `find_actors` are already shipped — do not rebuild them.
+**The `.umap` mtime changed both times.** v1 would have called the first one a
+success. Treat a WP save failure right after opening a level as wait-and-retry,
+and do not relax the check to make it pass.
 
 ---
 
-## Explicitly out of scope until live-green
+## Gotchas that cost real time
 
-- Ultimate Engine CoPilot and FlightDeck — different products
-- `tool_scene_diff`, `tool_asset_validate`, `tool_blueprint_edit` — not required for completion
-- Niagara, PCG, Sequencer tool names
-- The Aikido scan — blocked unless the user is signed in
-- Any claim from a cloud session that it exercised the Editor
+- **World Partition through the watcher crashes UE 5.8.** Creating or opening a
+  WP level from the Slate post-tick dispatch trips
+  `Assertion failed: !FWorldPartitionLoadingContext::IsDeferringRawObjects()`.
+  Actor-level work through the watcher is fine. See `KNOWN_LIMITATIONS.md`.
+- **`new_level_from_template` returns `False` while still creating and saving
+  the asset.** Check the disk, not the return value.
+- **In a commandlet, `new_level()` leaves the world in a transient `/Temp/`
+  package**, so saves cannot be verified headlessly — every save route returns
+  False there.
+- **Epic's MCP needs `Connection: keep-alive`.** `tools/call` streams its result
+  on the POST's own response; `Connection: close` makes the server hang up and
+  you get 200, `text/event-stream`, 0 bytes. `GET /mcp` is 405 by design.
+- **`execute_python` is a write tool**, so it is refused during PIE. That is why
+  PIE exit needs the control channel, not a tool.
+
+---
+
+## The control channel
+
+`init_unreal.py` handles requests shaped `{"control": "..."}` before tool
+dispatch: `pie_state`, `begin_play`, `end_play`. They are **not tools** — not in
+`TOOLS`, not in `WRITE_TOOLS` — so the identity check is unaffected and the
+write guard is untouched. Ending PIE is not a write; it discards the throwaway
+PIE world and restores the state the guard protects.
+
+---
+
+## What is next
+
+1. **Widen `epic_call`.** Epic ships ~1,035 tools across 55 toolsets in UE 5.8
+   as Python modules under `Engine/Plugins/Experimental/Toolsets/`. `epic_call`
+   already imports and invokes them and verifies the effect; the work is
+   argument-coercion coverage and a catalogue. Nobody else in this market
+   verifies persistence — not Epic, not ue-mcp, not Ultimate Engine CoPilot,
+   whose own README assigns validation to the user.
+2. **Find the `PHX_` scene**, or retire gate 3.
+3. A shared skill corpus with a `runtime:` tag (`ue5` / `browser` / `both`).
+   Now unblocked: the ue5 half describes tools that have been watched running.
+4. Do **not** import NINJA_ENGINE into this repo. Two runtimes.
 
 ---
 
 ## Protocol for the next session
 
-Earlier in this project an assistant claimed a 2,000-line verified v2
-bridge and 58/58 tests. None of it existed. The files on disk were
-unpatched v1.
+Earlier in this project an assistant claimed a 2,000-line verified v2 bridge
+and 58/58 tests. None of it existed.
 
 The guard is mechanical:
 
 - A file is real when it has been **read in this session**.
-- A test passes when its **output has been seen**. A cloud session cannot
-  see Editor output, so it cannot report on Editor behaviour, in any wording.
-- Version claims resolve against the `TOOLS` dict or the Output Log,
-  never against a filename or a document.
+- A test passes when its **output has been seen**.
+- Version claims resolve against the `TOOLS` dict or the Output Log, never a
+  filename or a document.
 - "I cannot reach that" is a complete and acceptable answer.
+
+This applies to claims about *other people's* software too. A competitor's
+transport was reported broken in this project on the strength of a client bug
+in our own harness. Establish it yourself before repeating it.
 
 ---
 
@@ -232,7 +190,9 @@ The guard is mechanical:
 |---|---|
 | Repo | github.com/scambria0838-gif/unreal · PR #3 |
 | Branch | `cursor/superninja-v2-source-of-truth-97ac` |
-| Drive Engine folder | NINJA_ENGINE_v1.9 · `1UlNt0qaQUoIT-1ueFmvdghOXOV_e4AO4` |
-| Drive Engine zip | `15aD5TQ2le_mDyT2oW9kdyxgZ6orfKtx2` · 2.5 MB · look only |
-| Local stale zip | `C:\Users\steve\Downloads\unreal plugin\SUPERNINJA_V2_COMPLETE\` · v2.0.0 |
-| Editor Python | 3.11 · reject cpython-314 bytecode |
+| Project | `C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA` |
+| Sidecar | `Plugins/SuperNinjaAI` (Python-only, `"Modules": []`) |
+| Bridge dir | `<Project>\Saved\SuperNinja` |
+| WP fixture | `/Game/SNV2_WP` — the only partitioned level in the project |
+| Epic MCP | `127.0.0.1:8000`, `ModelContextProtocol.StartServer` |
+| Editor Python | 3.11 — reject cpython-314 bytecode |

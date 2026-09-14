@@ -20,8 +20,8 @@ from datetime import datetime
 from pathlib import Path
 
 
-EXPECTED_VERSION = "2.1.0"
-EXPECTED_TOOL_COUNT = 14
+EXPECTED_VERSION = "2.2.0"
+EXPECTED_TOOL_COUNT = 15
 SOURCE_FILES = (
     "superninja_bridge_v2.py",
     "superninja_bridge.py",
@@ -49,9 +49,9 @@ def repo_root_from(hint: str | None) -> Path:
 
 def assert_source_is_v21(bridge_src: Path) -> None:
     text = bridge_src.read_text(encoding="utf-8")
-    if 'BRIDGE_VERSION = "2.1.0"' not in text:
+    if 'BRIDGE_VERSION = "2.2.0"' not in text:
         raise InstallError(
-            "Source bridge is not v2.1.0. Do not install from "
+            "Source bridge is not v2.2.0. Do not install from "
             "SUPERNINJA_V2_DELIVERY (that zip is v2.0.0 / 9 tools): {}".format(bridge_src)
         )
     if '"find_actors"' not in text or '"save_level_as"' not in text:
@@ -271,8 +271,8 @@ def install(project: str | None, repo_root: str | None,
 
     if not dry_run:
         installed = (plug / "superninja_bridge_v2.py").read_text(encoding="utf-8")
-        if 'BRIDGE_VERSION = "2.1.0"' not in installed:
-            raise InstallError("Install check failed: destination is not v2.1.0")
+        if 'BRIDGE_VERSION = "2.2.0"' not in installed:
+            raise InstallError("Install check failed: destination is not v2.2.0")
 
     bridge_dir = project_root / "Saved" / "SuperNinja"
     smoke = repo / "tests" / "live_smoke_test.py"

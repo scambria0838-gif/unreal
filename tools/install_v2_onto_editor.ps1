@@ -18,8 +18,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$ExpectedVersion = "2.1.0"
-$ExpectedToolCount = 14
+$ExpectedVersion = "2.2.0"
+$ExpectedToolCount = 15
 
 function Resolve-RepoRoot {
     param([string]$Hint)
@@ -176,8 +176,8 @@ $shimSrc = Join-Path $srcPy "superninja_bridge.py"
 $initSrc = Join-Path $srcPy "init_unreal.py"
 
 $bridgeText = Get-Content -Raw $bridgeSrc
-if ($bridgeText -notmatch 'BRIDGE_VERSION\s*=\s*"2\.1\.0"') {
-    throw "Source bridge is not v2.1.0. Do not install from SUPERNINJA_V2_DELIVERY (that zip is v2.0.0 / 9 tools). RepoRoot=$repo"
+if ($bridgeText -notmatch 'BRIDGE_VERSION\s*=\s*"2\.2\.0"') {
+    throw "Source bridge is not v2.2.0. Do not install from SUPERNINJA_V2_DELIVERY (that zip is v2.0.0 / 9 tools). RepoRoot=$repo"
 }
 if ($bridgeText -notmatch '"find_actors"' -or $bridgeText -notmatch '"save_level_as"') {
     throw "Source bridge is missing v2.1 first-class tools. Wrong tree: $bridgeSrc"
@@ -257,8 +257,8 @@ if ($CopySkill) {
 
 if (-not $WhatIf) {
     $installed = Get-Content -Raw (Join-Path $plug "superninja_bridge_v2.py")
-    if ($installed -notmatch 'BRIDGE_VERSION\s*=\s*"2\.1\.0"') {
-        throw "Install check failed: destination is not v2.1.0"
+    if ($installed -notmatch 'BRIDGE_VERSION\s*=\s*"2\.2\.0"') {
+        throw "Install check failed: destination is not v2.2.0"
     }
 }
 

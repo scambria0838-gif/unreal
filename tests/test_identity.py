@@ -40,7 +40,7 @@ def _parse_tools_dict(text: str) -> list[str]:
 class IdentityTests(unittest.TestCase):
     def test_source_version_and_tools_dict(self):
         text = BRIDGE.read_text(encoding="utf-8")
-        self.assertIn('BRIDGE_VERSION = "2.1.0"', text)
+        self.assertIn('BRIDGE_VERSION = "2.2.0"', text)
         names = _parse_tools_dict(text)
         self.assertEqual(len(names), EXPECTED_TOOL_COUNT)
         self.assertEqual(set(names), set(EXPECTED_TOOLS))
@@ -63,8 +63,8 @@ class IdentityTests(unittest.TestCase):
 
     def test_identity_mismatch_rejects_v20_zip(self):
         self.assertIsNone(identity_mismatch({
-            "bridge_version": "2.1.0",
-            "tool_count": 14,
+            "bridge_version": "2.2.0",
+            "tool_count": 15,
             "tools": list(EXPECTED_TOOLS),
         }))
         self.assertIn("wrong bridge version", identity_mismatch({
@@ -72,14 +72,14 @@ class IdentityTests(unittest.TestCase):
             "tool_count": 9,
         }) or "")
         self.assertIn("wrong tool_count", identity_mismatch({
-            "bridge_version": "2.1.0",
+            "bridge_version": "2.2.0",
             "tool_count": 9,
         }) or "")
 
     def test_handoff_states_the_three_gates(self):
         text = HANDOFF.read_text(encoding="utf-8")
-        self.assertIn("v2.1.0", text)
-        self.assertIn("14 tools", text)
+        self.assertIn("v2.2.0", text)
+        self.assertIn("15 tools", text)
         self.assertIn("live_smoke_test.py", text)
         self.assertIn("TEST_RESULTS_live.md", text)
         self.assertIn("phx_dedupe.py", text)

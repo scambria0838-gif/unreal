@@ -44,7 +44,7 @@ import sys
 import time
 import traceback
 
-BRIDGE_VERSION = "2.1.0"
+BRIDGE_VERSION = "2.2.0"
 
 try:
     import unreal
@@ -1337,6 +1337,149 @@ def tool_execute_python(args):
                    executed=True)
 
 
+def _coerce_epic_arg(value):
+    """Turn JSON into the unreal types Epic's toolsets expect.
+
+    Deliberately small. Anything not recognised passes through untouched, so
+    an unsupported type fails loudly inside Epic's own validation rather than
+    being silently mangled here.
+    """
+    if isinstance(value, dict):
+        kind = value.get("__type")
+        if kind == "actor_label":
+            for a in _all_actors():
+                try:
+                    if a.get_actor_label() == value.get("label"):
+                        return a
+                except Exception:
+                    continue
+            raise ValueError("no actor labelled {!r}".format(value.get("label")))
+        if kind == "class":
+            cls = unreal.load_object(None, value["path"])
+            return cls
+        if kind == "vector":
+            return unreal.Vector(*value["xyz"])
+        if kind == "rotator":
+            return unreal.Rotator(*value["pyr"])
+        if kind == "transform":
+            return unreal.Transform(
+                unreal.Vector(*value.get("location", [0, 0, 0])),
+                unreal.Rotator(*value.get("rotation", [0, 0, 0])),
+                unreal.Vector(*value.get("scale", [1, 1, 1])))
+        if kind == "asset":
+            return unreal.load_asset(value["path"])
+        return {k: _coerce_epic_arg(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_coerce_epic_arg(v) for v in value]
+    return value
+
+
+def tool_epic_call(args):
+    """Call one of Epic's ToolsetRegistry tools and verify what it did.
+
+    args: {toolset, tool, args, expect_change, allow_pie}
+
+    Epic ships ~1,000 tools across its toolsets in UE 5.8, and they are Python
+    modules on disk, so this imports and calls them directly rather than going
+    back out through the MCP socket. What Epic returns is the tool's return
+    value -- an object reference, a bool, a handle. That is not evidence the
+    change survived, which is the whole reason this wrapper exists.
+
+    Verification: a named write tool that produces no observable effect did
+    not do its job. Unlike execute_python, which cannot know what arbitrary
+    code intended, this call knows it invoked a specific tool, so "nothing
+    changed" is a failure rather than an unknown. Pass expect_change=false for
+    the genuinely read-only tools.
+
+    This does not prove the change reached disk -- call save_level for that.
+    On a World Partition level save_level diffs __ExternalActors__, and the
+    package Epic names in its return value should appear in that diff.
+    """
+    context, _world = _check_world_context()
+    toolset = args.get("toolset")
+    tool = args.get("tool")
+    call_args = args.get("args") or {}
+    expect_change = args.get("expect_change", True)
+
+    before = {"actor_count": len(_all_actors()),
+              "dirty_packages": _dirty_packages()}
+
+    if not toolset or not tool:
+        return _refused(context, "epic_call needs 'toolset' (module path, e.g. "
+                                 "editor_toolset.toolsets.primitive) and 'tool' "
+                                 "(e.g. PrimitiveTools.add_cube)", before)
+
+    refusal = _pie_guard(args, context)
+    if refusal:
+        return _refused(context, refusal["reason"], before)
+
+    try:
+        module = __import__(toolset, fromlist=["*"])
+    except Exception as exc:
+        return _refused(context, "cannot import Epic toolset {!r}: {}".format(
+            toolset, exc), before)
+
+    target = module
+    try:
+        for part in tool.split("."):
+            target = getattr(target, part)
+    except Exception as exc:
+        return _refused(context, "toolset {!r} has no {!r}: {}".format(
+            toolset, tool, exc), before)
+    if not callable(target):
+        return _refused(context, "{}.{} is not callable".format(toolset, tool), before)
+
+    try:
+        kwargs = {k: _coerce_epic_arg(v) for k, v in call_args.items()}
+    except Exception as exc:
+        return _refused(context, "could not coerce arguments: {}".format(exc), before)
+
+    try:
+        returned = target(**kwargs)
+    except Exception as exc:
+        after = {"actor_count": len(_all_actors()),
+                 "dirty_packages": _dirty_packages()}
+        return _result(False, False, context, before, after,
+                       after["dirty_packages"],
+                       reason="Epic tool {}.{} raised: {}".format(toolset, tool, exc),
+                       traceback=traceback.format_exc())
+
+    after = {"actor_count": len(_all_actors()),
+             "dirty_packages": _dirty_packages()}
+    after["actor_delta"] = after["actor_count"] - before["actor_count"]
+    new_dirty = [p for p in after["dirty_packages"]
+                 if p not in before["dirty_packages"]]
+    after["newly_dirty_packages"] = new_dirty
+    after["epic_returned"] = str(returned)[:300] if returned is not None else None
+    after["epic_returned_package"] = None
+    try:
+        if returned is not None and hasattr(returned, "get_package"):
+            after["epic_returned_package"] = str(returned.get_package().get_name())
+    except Exception:
+        pass
+
+    changed = bool(after["actor_delta"]) or bool(new_dirty)
+    if expect_change and not changed:
+        return _result(False, False, context, before, after,
+                       after["dirty_packages"],
+                       reason="Epic tool {}.{} returned {!r} but nothing "
+                              "observably changed: actor delta 0 and no package "
+                              "became dirty. Either it is read-only (pass "
+                              "expect_change=false) or it did not do the work "
+                              "it reported."
+                              .format(toolset, tool, after["epic_returned"]),
+                       epic_tool="{}.{}".format(toolset, tool))
+
+    return _result(True, True, context, before, after, after["dirty_packages"],
+                   epic_tool="{}.{}".format(toolset, tool),
+                   verification_method="actor delta + dirty-package delta",
+                   note="Epic's tool ran and changed the world. This does NOT "
+                        "prove persistence -- call save_level, and on a World "
+                        "Partition level check that the package named in "
+                        "epic_returned_package appears in the "
+                        "__ExternalActors__ diff.")
+
+
 def tool_bridge_health(args):
     """Report what the bridge can and cannot see. Read-only."""
     args = args or {}
@@ -1717,6 +1860,7 @@ TOOLS = {
     "import_asset":          tool_import_asset,
     "execute_python":        tool_execute_python,
     "bridge_health":         tool_bridge_health,
+    "epic_call":             tool_epic_call,
     "find_actors":           tool_find_actors,
     "destroy_actor":         tool_destroy_actor,
     "set_actor_transform":   tool_set_actor_transform,
@@ -1726,7 +1870,12 @@ TOOLS = {
 WRITE_TOOLS = {"spawn_actor", "place_static_mesh", "set_directional_light",
                "save_level", "save_level_as", "create_folder", "import_asset",
                "execute_python", "destroy_actor", "set_actor_transform",
-               "set_viewport_camera"}
+               "set_viewport_camera",
+               # epic_call dispatches into Epic's toolsets, most of which write.
+               # It is treated as a write unconditionally: the bridge cannot
+               # know which of Epic's ~1,000 tools mutates, so the safe default
+               # is the restrictive one.
+               "epic_call"}
 
 
 class SuperNinjaBridge(object):

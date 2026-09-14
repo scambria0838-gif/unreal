@@ -1,26 +1,26 @@
 # Live smoke test - SuperNinjaBridge v2
 
-Run: 2026-09-13 23:52:52
+Run: 2026-09-14 02:29:12
 Bridge folder: `C:/Users/steve/Projects/SuperNinja/important/ue5_project/NINJA/Saved/SuperNinja`
 UE version: 5.8.0-55116800+++UE5+Release-5.8
 Level: `/Game/SNV2_WP` (World Partition: True)
-Round-trip latency: 653 ms
+Round-trip latency: 203 ms
 
 | Check | Result | Detail |
 |---|---|---|
 | bridge answers | PASS | None |
-| bridge identity is v2.1.0 / 14 tools (not the 9-tool zip) | PASS | 2.1.0 |
+| bridge identity is v2.2.0 / 15 tools (not the 9-tool zip) | PASS | 2.2.0 |
 | world context is Editor (not PIE, not Unknown) | PASS | Editor |
 | spawn ok and verified | PASS | None |
-| actor count increased | PASS | {'actor_count': 143, 'label_exists': True, 'spawned_actor': {'label': 'SNV2_Smoke_A', 'path': '/Game/SNV2_WP.SNV2_WP:PersistentLevel.StaticMeshActor_UAID_A0AD9F33413A750103_1089089479', 'location': [0.0, 0.0, 300.0], 'rotation': [0.0, 0.0, 0.0], 'scale': [1.0, 1.0, 1.0], 'class': 'StaticMeshActor', 'guid': "<Struct 'Guid' (0x0000025D1F751650) {}>", 'in_pie_world': False}} |
-| spawned path is not a PIE path | PASS | {'actor_count': 143, 'label_exists': True, 'spawned_actor': {'label': 'SNV2_Smoke_A', 'path': '/Game/SNV2_WP.SNV2_WP:PersistentLevel.StaticMeshActor_UAID_A0AD9F33413A750103_1089089479', 'location': [0.0, 0.0, 300.0], 'rotation': [0.0, 0.0, 0.0], 'scale': [1.0, 1.0, 1.0], 'class': 'StaticMeshActor', 'guid': "<Struct 'Guid' (0x0000025D1F751650) {}>", 'in_pie_world': False}} |
+| actor count increased | PASS | {'actor_count': 145, 'label_exists': True, 'spawned_actor': {'label': 'SNV2_Smoke_A', 'path': '/Game/SNV2_WP.SNV2_WP:PersistentLevel.StaticMeshActor_UAID_A0AD9F33413A7D0103_1879216888', 'location': [0.0, 0.0, 300.0], 'rotation': [0.0, 0.0, 0.0], 'scale': [1.0, 1.0, 1.0], 'class': 'StaticMeshActor', 'guid': "<Struct 'Guid' (0x0000013B9EF23950) {}>", 'in_pie_world': False}} |
+| spawned path is not a PIE path | PASS | {'actor_count': 145, 'label_exists': True, 'spawned_actor': {'label': 'SNV2_Smoke_A', 'path': '/Game/SNV2_WP.SNV2_WP:PersistentLevel.StaticMeshActor_UAID_A0AD9F33413A7D0103_1879216888', 'location': [0.0, 0.0, 300.0], 'rotation': [0.0, 0.0, 0.0], 'scale': [1.0, 1.0, 1.0], 'class': 'StaticMeshActor', 'guid': "<Struct 'Guid' (0x0000013B9EF23950) {}>", 'in_pie_world': False}} |
 | second spawn refused by default | PASS | actor with label SNV2_Smoke_A already exists. Pass on_duplicate: "replace" to overwrite it or "skip" to leave it alone. |
 | on_duplicate=skip returns ok without creating | PASS | actor with label SNV2_Smoke_A already exists, skipped per on_duplicate=skip |
 | on_duplicate=replace succeeds | PASS | None |
 | manifest boundary enforced on engine content | PASS |  |
 | save ok and verified | PASS | None |
 | verification method reported | PASS | __ExternalActors__ tree diff |
-| external-actor files were written | PASS | {'added': ['6/3Z/Q7L2BF44HUPH2U5TEQZ1N0.uasset'], 'removed': [], 'modified': [], 'count_before': 143, 'count_after': 144} |
+| external-actor files were written | PASS | {'added': ['1/9E/WXALZOI6IV97SYX9T04AWO.uasset'], 'removed': [], 'modified': [], 'count_before': 145, 'count_after': 146} |
 | .umap was not used as the evidence | PASS | 1 external actor packages added, 0 modified, 0 removed under C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA\Content\__ExternalActors__\SNV2_WP. .umap mtime changed (not used as evidence for World Partition levels). |
 | dirty packages listed | PASS | [] |
 | actor still present after save | PASS | None |

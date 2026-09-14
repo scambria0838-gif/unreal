@@ -27,12 +27,13 @@ import uuid
 
 RESULTS = []
 
-EXPECTED_BRIDGE_VERSION = "2.1.0"
-EXPECTED_TOOL_COUNT = 14
+EXPECTED_BRIDGE_VERSION = "2.2.0"
+EXPECTED_TOOL_COUNT = 15
 EXPECTED_TOOLS = (
     "bridge_health",
     "create_folder",
     "destroy_actor",
+    "epic_call",
     "execute_python",
     "find_actors",
     "import_asset",
@@ -48,7 +49,7 @@ EXPECTED_TOOLS = (
 
 
 def identity_mismatch(health):
-    """Return a reason if health is not v2.1.0 / 14 tools, else None.
+    """Return a reason if health is not v2.2.0 / 15 tools, else None.
 
     Version claims resolve against the live health payload (or the TOOLS
     dict in-repo), never a filename. A 2.0.0 / 9-tool zip must fail here.
@@ -229,7 +230,7 @@ def main():
     rtt = round((time.time() - t0) * 1000)
     check("bridge answers", h.get("ok"), h.get("reason"))
     mismatch = identity_mismatch(h)
-    check("bridge identity is v2.1.0 / 14 tools (not the 9-tool zip)",
+    check("bridge identity is v2.2.0 / 15 tools (not the 9-tool zip)",
           mismatch is None, mismatch or h.get("bridge_version"))
     if mismatch:
         print("STOP. {}".format(mismatch))

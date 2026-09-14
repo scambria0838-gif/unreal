@@ -52,7 +52,7 @@ class InstallV21Tests(unittest.TestCase):
         self.assertTrue((plug / "init_unreal.v1.bak.py").is_file())
         self.assertEqual((plug / "superninja_bridge.v1.bak.py").read_text(encoding="utf-8"), "# v1 bridge\n")
         dest = (plug / "superninja_bridge_v2.py").read_text(encoding="utf-8")
-        self.assertIn('BRIDGE_VERSION = "2.1.0"', dest)
+        self.assertIn('BRIDGE_VERSION = "2.2.0"', dest)
         self.assertIn('"find_actors"', dest)
         shim = (plug / "superninja_bridge.py").read_text(encoding="utf-8")
         self.assertIn("from superninja_bridge_v2 import", shim)
