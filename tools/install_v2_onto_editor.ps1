@@ -35,10 +35,38 @@ function Resolve-RepoRoot {
     return $candidate
 }
 
+function Test-ProjectIsReal {
+    param([string]$Root)
+    # Downloads holds ~65 flattened doc dumps of this project in which Content,
+    # Plugins and Saved are 0-byte FILES. They satisfy a *.uproject test and
+    # then will not load. A real project has those as directories.
+    # Only reject the dumps. Requiring these to EXIST as directories wrongly
+    # rejects a legitimate minimal project; the tell is that they are files.
+    foreach ($d in @("Content", "Plugins", "Saved")) {
+        if (Test-Path (Join-Path $Root $d) -PathType Leaf) { return $false }
+    }
+    return $true
+}
+
 function Find-ProjectRoot {
     param([string]$Hint)
+    # An explicit -Project must be honoured or refused. Letting it fall through
+    # to the guess list means a typo silently installs into a different, real
+    # project -- which is what happened the first time this guard was added.
+    if ($Hint) {
+        if ((Test-Path $Hint -PathType Leaf) -and
+            ([IO.Path]::GetExtension($Hint) -eq ".uproject")) {
+            return (Split-Path -Parent $Hint)
+        }
+        if (Test-Path $Hint -PathType Container) {
+            $hintUp = Get-ChildItem -Path $Hint -Filter "*.uproject" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($hintUp -and (Test-ProjectIsReal $Hint)) { return $Hint }
+        }
+        throw ("-Project $Hint is not a loadable Unreal project (no *.uproject, " +
+               "or Content/Plugins/Saved are files rather than directories - " +
+               "that is a flattened doc dump). Not falling back to auto-detection.")
+    }
     $guesses = @()
-    if ($Hint) { $guesses += $Hint }
     $userHome = $env:USERPROFILE
     if ($userHome) {
         $guesses += @(
@@ -48,7 +76,14 @@ function Find-ProjectRoot {
             (Join-Path $userHome "OneDrive\Documents\Unreal Projects\ninja")
         )
     }
+    if ($userHome) {
+        # The real NINJA on the Windows box. It is NOT under Documents; the
+        # copies that are have 0-byte files where Content/Plugins/Saved
+        # should be, so they resolve and then fail to load.
+        $guesses += (Join-Path $userHome "Projects\SuperNinja\important\ue5_project\NINJA")
+    }
     $guesses += @(
+        "C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA",
         "C:\Users\steve\Documents\Unreal Projects\NINJA",
         "C:\Users\steve\OneDrive\Documents\Unreal Projects\NINJA",
         "C:\Users\sbcam\OneDrive\Documents\Unreal Projects\NINJA"
@@ -63,7 +98,7 @@ function Find-ProjectRoot {
         }
         if (Test-Path $g -PathType Container) {
             $up = Get-ChildItem -Path $g -Filter "*.uproject" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($up) { return $g }
+            if ($up -and (Test-ProjectIsReal $g)) { return $g }
         }
     }
     throw "Could not find NINJA.uproject. Pass -Project `"C:\path\to\NINJA`" (folder or .uproject)."

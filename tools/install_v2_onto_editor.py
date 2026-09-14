@@ -63,12 +63,37 @@ def assert_not_pyc(path: Path) -> None:
         raise InstallError("Refusing to copy bytecode: {}".format(path))
 
 
+def _project_is_real(root: Path) -> bool:
+    """Reject the flattened doc dumps.
+
+    Downloads holds dozens of copies of this project in which Content, Plugins
+    and Saved are 0-byte *files*. They pass a "*.uproject" glob and then fail
+    to load. A real project has those as directories.
+    """
+    return not any((root / d).is_file() for d in ("Content", "Plugins", "Saved"))
+
+
 def find_project_root(hint: str | None) -> Path:
-    guesses = []
     if hint:
-        guesses.append(Path(hint))
+        h = Path(hint)
+        if h.is_file() and h.suffix == ".uproject":
+            return h.parent
+        if h.is_dir() and any(h.glob("*.uproject")) and _project_is_real(h):
+            return h
+        raise InstallError(
+            "--project {} is not a loadable Unreal project (no *.uproject, or "
+            "Content/Plugins/Saved are files rather than directories -- that is "
+            "a flattened doc dump). Not falling back to auto-detection: an "
+            "explicit target must be honoured or refused.".format(hint)
+        )
+    guesses = []
     home = Path.home()
     guesses.extend([
+        # The real NINJA on the Windows box. It is not under Documents; the
+        # copies that are have 0-byte files where Content/Plugins/Saved should
+        # be, so they satisfy a *.uproject glob and then will not load.
+        home / "Projects" / "SuperNinja" / "important" / "ue5_project" / "NINJA",
+        Path(r"C:\Users\steve\Projects\SuperNinja\important\ue5_project\NINJA"),
         home / "Documents" / "Unreal Projects" / "NINJA",
         home / "OneDrive" / "Documents" / "Unreal Projects" / "NINJA",
         home / "Documents" / "Unreal Projects" / "ninja",
@@ -80,7 +105,7 @@ def find_project_root(hint: str | None) -> Path:
     for g in guesses:
         if g.is_file() and g.suffix == ".uproject":
             return g.parent
-        if g.is_dir() and any(g.glob("*.uproject")):
+        if g.is_dir() and any(g.glob("*.uproject")) and _project_is_real(g):
             return g
     raise InstallError(
         "Could not find NINJA.uproject. Pass --project "
@@ -91,6 +116,7 @@ def find_project_root(hint: str | None) -> Path:
 def find_plugin_python(project_root: Path) -> Path:
     preferred = [
         project_root / "Plugins" / "SuperNinjaAI" / "Content" / "Python",
+        project_root / "Plugins" / "SuperNinja" / "Content" / "Python",
         project_root / "Plugins" / "ninja" / "Content" / "Python",
     ]
     for p in preferred:

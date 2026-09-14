@@ -340,9 +340,19 @@ def main():
     print("      labels created this run: {}".format(labels))
 
     # -- report ------------------------------------------------------------
-    passed = sum(1 for _n, ok, _d in RESULTS if ok)
+    passed = sum(1 for _n, st, _d in RESULTS if st == "PASS")
+    failed = sum(1 for _n, st, _d in RESULTS if st == "FAIL")
+    skipped = sum(1 for _n, st, _d in RESULTS if st == "SKIP")
     total = len(RESULTS)
-    print("\n{}/{} live checks passed".format(passed, total))
+    missed = sorted(n for n, st, _d in RESULTS if st == "SKIP" and n in FLAGSHIP)
+    verified = not failed and not missed
+    print("")
+    print("{} passed, {} failed, {} skipped, of {} live checks"
+          .format(passed, failed, skipped, total))
+    if missed:
+        print("NOT VERIFIED - these checks never ran:")
+        for _m in missed:
+            print("  - {}".format(_m))
 
     lines = ["# Live smoke test - SuperNinjaBridge v2", "",
              "Run: {}".format(time.strftime("%Y-%m-%d %H:%M:%S")),
@@ -352,10 +362,18 @@ def main():
                  h.get("level"), h.get("world_partition")),
              "Round-trip latency: {} ms".format(rtt),
              "", "| Check | Result | Detail |", "|---|---|---|"]
-    for n, ok, d in RESULTS:
+    for n, st, d in RESULTS:
         lines.append("| {} | {} | {} |".format(
-            n, "PASS" if ok else "FAIL", d.replace("|", "/").replace("\n", " ")))
-    lines += ["", "**{}/{} passed**".format(passed, total)]
+            n, st, d.replace("|", "/").replace("\n", " ")))
+    lines += ["", "**{} passed, {} failed, {} skipped, of {}**"
+              .format(passed, failed, skipped, total)]
+    if verified:
+        lines += ["", "**VERIFIED** - every flagship check ran and passed."]
+    else:
+        lines += ["", "**NOT VERIFIED** - this run does not certify the bridge."]
+        if missed:
+            lines += ["", "Flagship checks that never ran:", ""]
+            lines += ["- `{}`".format(n) for n in missed]
     with open(args.report, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
     print("Report written to {}".format(args.report))
