@@ -28,12 +28,12 @@ exist on the machine this was built on.
 # 1. prove the logic, no Unreal required
 python tests/offline_verification_harness.py
 
-# 2. install (see INTEGRATION_GUIDE.md for the careful version)
-copy superninja_bridge_v2.py init_unreal_v2.py  <Project>\Plugins\ninja\Content\Python\
+# 2. install from THIS REPO (not SUPERNINJA_V2_DELIVERY.zip)
+#    powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
 
 # 3. restart the Editor, watch the Output Log for:
+#    [SuperNinja v2] v2.1.0 registered, 14 tools
 #    [SuperNinja v2] watcher started
-#    [SuperNinja v2]   inbox  <Project>\Saved\SuperNinja\sn_inbox
 
 # 4. prove it against the real Editor
 python tests/live_smoke_test.py --bridge-dir "<Project>/Saved/SuperNinja"

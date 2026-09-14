@@ -1,102 +1,104 @@
-# Integration guide — SuperNinjaBridge v2
+# Integration guide — SuperNinjaBridge v2.1
 
-Ten minutes, four steps. Nothing here overwrites v1 until you say so.
+Install from **this git repo**, not from `SUPERNINJA_V2_DELIVERY.zip`.
+That zip is **v2.0.0 / 9 tools**. The Editor cutover is **v2.1.0 / 14 tools**.
 
----
+This Cloud Agent cannot reach `C:\`, restart Unreal, or run the live smoke
+test. You run the steps below on the Windows Editor box.
 
-## 0. Before you start
-
-Find your real project. The prompt this work came from says
-`C:\Users\sbcam\OneDrive\Documents\Unreal Projects\NINJA\NINJA.uproject`, but on
-the machine this was built on there is no `sbcam` user and no such project — only
-flattened doc dumps. So: locate `NINJA.uproject`, and confirm the plugin lives at
-
-```
-<Project>\Plugins\ninja\Content\Python\superninja_bridge.py
-<Project>\Plugins\ninja\Content\Python\init_unreal.py
-```
-
-(the folder may be `Plugins\SuperNinjaAI\` instead — either is fine, the files
-are what matter).
-
-Also confirm your engine version. UE **5.8** is what's installed on this machine;
-the kit docs say 5.7. v2 targets the 5.x editor-subsystem API and falls back to
-the legacy `EditorLevelLibrary` names, so both work — but note which one you're
-on, because `TEST_RESULTS.md` needs it.
+Until `tests/live_smoke_test.py` passes on that box, treat every Editor
+claim as **unverified-until-live**.
 
 ---
 
-## 1. Back up v1
+## 0. Find the project
+
+Typical locations:
+
+```
+C:\Users\steve\Documents\Unreal Projects\NINJA\NINJA.uproject
+C:\Users\steve\OneDrive\Documents\Unreal Projects\NINJA\NINJA.uproject
+```
+
+Plugin Python folder is one of:
+
+```
+<Project>\Plugins\SuperNinjaAI\Content\Python\
+<Project>\Plugins\ninja\Content\Python\
+```
+
+Do **not** copy `__pycache__` or `*.cpython-314.pyc`. Those are CPython 3.14.
+UE 5.8 embeds CPython 3.11.
+
+---
+
+## 1. One-shot install (preferred)
+
+From a clone of this repo on the Windows box:
 
 ```powershell
-$plug = "C:\Path\To\NINJA\Plugins\ninja\Content\Python"
+cd <this-repo>
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
+# or, if auto-detect misses the project:
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -Project "C:\Users\steve\Documents\Unreal Projects\NINJA"
+# preview only:
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -WhatIf
+# also copy SKILL.md to Desktop\skill\superninja-v2\:
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -CopySkill
+```
+
+The script:
+
+1. Backs up existing `superninja_bridge.py` and `init_unreal.py` to
+   `*.v1.bak.py` and a timestamped `*.v1.bak.<stamp>.py`
+2. Copies **only** these three files from the repo:
+   - `Plugins/SuperNinjaAI/Content/Python/superninja_bridge_v2.py`
+   - `Plugins/SuperNinjaAI/Content/Python/superninja_bridge.py` (shim)
+   - `Plugins/SuperNinjaAI/Content/Python/init_unreal.py` (watcher)
+3. Refuses to copy if the source is not v2.1.0
+4. Never copies `.pyc` / `__pycache__`
+
+---
+
+## 2. Manual copy (same files, same order)
+
+```powershell
+$src  = "C:\Path\To\this-repo\Plugins\SuperNinjaAI\Content\Python"
+$plug = "C:\Path\To\NINJA\Plugins\SuperNinjaAI\Content\Python"
+
 Copy-Item "$plug\superninja_bridge.py" "$plug\superninja_bridge.v1.bak.py"
 Copy-Item "$plug\init_unreal.py"       "$plug\init_unreal.v1.bak.py"
+
+Copy-Item "$src\superninja_bridge_v2.py" $plug -Force
+Copy-Item "$src\superninja_bridge.py"    $plug -Force
+Copy-Item "$src\init_unreal.py"          $plug -Force
 ```
 
----
-
-## 2. Copy the v2 files in
-
-```powershell
-$src  = "C:\Path\To\SUPERNINJA_V2_DELIVERY"
-$plug = "C:\Path\To\NINJA\Plugins\ninja\Content\Python"
-
-Copy-Item "$src\superninja_bridge_v2.py" $plug
-Copy-Item "$src\init_unreal_v2.py"       $plug
-```
-
-Two ways to activate it:
-
-**Option A — side by side (recommended for the first run).** Leave v1's
-`init_unreal.py` alone and load v2 by hand from the Editor's Python console:
-
-```
-exec(open(r"C:\Path\To\NINJA\Plugins\ninja\Content\Python\init_unreal_v2.py").read())
-```
-
-Nothing changes on restart; you can compare v1 and v2 responses on the same
-editor session.
-
-**Option B — make it the default.** Replace the auto-run entry point:
-
-```powershell
-Copy-Item "$src\init_unreal_v2.py" "$plug\init_unreal.py" -Force
-```
-
-`init_unreal.py` is what Unreal auto-runs on plugin load; the file's own name
-doesn't matter beyond that, and it imports `superninja_bridge_v2` explicitly.
+`init_unreal.py` is what Unreal auto-runs on plugin load. It imports
+`superninja_bridge_v2` and starts the inbox/outbox watcher.
 
 ---
 
 ## 3. Restart the Editor and check the Output Log
 
-You want these lines:
+You want:
 
 ```
 [SuperNinja v2] Python bridge initializing...
-[SuperNinja v2] v2.0.0 registered, 9 tools: bridge_health, create_folder, ...
+[SuperNinja v2] v2.1.0 registered, 14 tools: bridge_health, create_folder, destroy_actor, execute_python, find_actors, import_asset, place_static_mesh, save_level, save_level_as, set_actor_transform, set_directional_light, set_viewport_camera, spawn_actor, take_screenshot
 [SuperNinja v2] watcher started
 [SuperNinja v2]   inbox  C:\...\NINJA\Saved\SuperNinja\sn_inbox
 [SuperNinja v2]   outbox C:\...\NINJA\Saved\SuperNinja\sn_outbox
-[SuperNinja v2]   poll   750 ms
-[SuperNinja v2] bridge v2.0.0 ready. Drop a request in C:\...\sn_inbox
 ```
 
-Copy that inbox path — everything else uses it.
+Reject **v2.0.0 / 9 tools** — that is the old Drive delivery zip, not this repo.
 
-If you'd rather put the bridge folder somewhere else (Desktop, a synced folder),
-set `SUPERNINJA_BRIDGE_DIR` before launching the Editor:
+Copy the inbox path. To override the bridge folder, set
+`SUPERNINJA_BRIDGE_DIR` before launching the Editor.
 
-```powershell
-[Environment]::SetEnvironmentVariable("SUPERNINJA_BRIDGE_DIR","C:\Users\<you>\Desktop\sn_bridge","User")
-```
-
-Then the folders become `...\sn_bridge\sn_inbox` and `...\sn_bridge\sn_outbox`.
-
-**If the watcher line never appears** but the "registered" line does: the Slate
-tick callback failed to register. The bridge still works via the console —
-`superninja_execute_tool("bridge_health", "{}")` — and the log will say why.
+If the watcher line never appears but "registered" does: the Slate tick
+callback failed. The bridge still works via
+`superninja_execute_tool("bridge_health", "{}")`.
 
 ---
 
@@ -109,50 +111,51 @@ Start-Sleep 2
 Get-Content "C:\Path\To\NINJA\Saved\SuperNinja\sn_outbox\health.json"
 ```
 
-You should get back UE version, world context, whether your level is World
-Partition, the external-actors count, dirty packages, source-control state, and
-any conflicting plugins.
+Expect `bridge_version` = `2.1.0`, `world_context` = `Editor`.
 
 ---
 
-## 5. Run the live smoke test
+## 5. Live smoke test (proves the Editor, not this repo)
 
-```bash
-python tests/live_smoke_test.py --bridge-dir "C:/Path/To/NINJA/Saved/SuperNinja"
+```powershell
+python tests\live_smoke_test.py --bridge-dir "C:\Path\To\NINJA\Saved\SuperNinja"
 ```
 
-It spawns, duplicates, saves, verifies against `__ExternalActors__`, asks you to
-press Alt-P for the PIE test, cleans up after itself, and writes
-`TEST_RESULTS_live.md`. That file is the one that proves v2 works on *your*
-machine — the shipped `TEST_RESULTS.md` only covers what could be verified
-without an Editor.
+It spawns, duplicates, saves, verifies against `__ExternalActors__`, asks
+you to press Alt-P for the PIE test, cleans up, and writes
+`TEST_RESULTS_live.md`. Until that file exists with a full pass, do not
+treat Editor behaviour as verified.
 
 ---
 
-## 6. Clean up the PHX_ duplicates (Phase 4)
+## 6. Optional Desktop skill
 
-In the Editor's Python console — preview first:
-
-```
-exec(open(r"C:\Path\To\SUPERNINJA_V2_DELIVERY\tools\phx_dedupe.py").read())
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1 -CopySkill
 ```
 
-It prints every label group, how many copies exist, and which one it would keep.
+or copy `skills/superninja-v2/SKILL.md` to
+`C:\Users\steve\Desktop\skill\superninja-v2\SKILL.md`.
+
+---
+
+## 7. PHX_ duplicates (preview first)
+
+In the Editor Python console:
+
+```
+exec(open(r"C:\Path\To\this-repo\tools\phx_dedupe.py").read())
+```
+
 Nothing is destroyed. When the plan looks right:
 
 ```
 run(apply=True, save=True)
 ```
 
-`save=True` routes the save through `tool_save_level`, so you get the
-external-actor diff as proof — `expect_removed` is set to the number of actors
-destroyed, and the save fails loudly if that many files don't disappear.
-
 ---
 
-## Request format reference
-
-Single tool:
+## Request format
 
 ```json
 { "tool": "spawn_actor",
@@ -162,28 +165,14 @@ Single tool:
             "on_duplicate": "error" } }
 ```
 
-Plan (stops at the first failure):
-
-```json
-{ "dry_run": false,
-  "stop_on_failure": true,
-  "steps": [
-    { "id": 1, "tool": "place_static_mesh",
-      "args": { "mesh_path": "/Game/KB3D/SM_Barrier", "label": "PHX_Barrier_01" } },
-    { "id": 2, "tool": "save_level", "args": { "expect_added": 1 } }
-  ] }
-```
-
-Useful arguments across the write tools:
-
 | Argument | Effect |
 |---|---|
 | `dry_run: true` | Report what would happen; change nothing. |
 | `allow_pie: true` | Override the PIE refusal for this call only. |
 | `on_duplicate` | `"error"` (default), `"skip"`, `"replace"`. |
 | `expect_added` / `expect_removed` | `save_level` asserts this many external-actor files changed. |
-| `expect` | `execute_python` only — a Python expression that must be truthy afterwards. |
-| `settle_seconds` | `save_level` wait before re-snapshotting the tree (default 1.0). Raise it on a slow disk or a very large level. |
+| `expect` | `execute_python` only — expression that must be truthy afterwards. |
+| `settle_seconds` | `save_level` wait before re-snapshotting (default 1.0). |
 
 ---
 
@@ -194,21 +183,12 @@ Copy-Item "$plug\superninja_bridge.v1.bak.py" "$plug\superninja_bridge.py" -Forc
 Copy-Item "$plug\init_unreal.v1.bak.py"       "$plug\init_unreal.py" -Force
 ```
 
-Restart the Editor. v2's files can stay where they are; nothing auto-loads them
-once `init_unreal.py` is back to v1.
+Restart the Editor.
 
 ---
 
-## Tightening the write boundary
+## Write boundary
 
-`superninja_bridge_v2.MANIFEST["allowed_content_roots"]` defaults to `["/Game/"]`
-— engine and plugin content are refused. To allow a specific extra root for a
-session, from the Editor console:
-
-```python
-import superninja_bridge_v2 as sb
-sb.MANIFEST["allowed_content_roots"].append("/Engine/BasicShapes/")
-```
-
-Add your own conflict-prone plugin names to
-`sb.MANIFEST["known_conflicting_plugins"]` and `bridge_health` will flag them.
+`superninja_bridge_v2.MANIFEST["allowed_content_roots"]` defaults to
+`["/Game/"]`. Engine and plugin content are refused unless you append a
+root for the session.

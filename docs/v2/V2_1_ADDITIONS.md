@@ -36,8 +36,15 @@ tool and asserts the same invariant.
 - `RESULT_TTL = 300`
 - every stored result has `result_ts`
 
+## Install onto the Editor
+
+`tools/install_v2_onto_editor.ps1` — run on the Windows box. Backs up v1,
+copies the three `.py` files from this repo, refuses `.pyc`. See
+`INTEGRATION_GUIDE.md`.
+
 ## Still not in the running Editor
 
-Until you copy these files onto the Windows project, the live Editor
-does not have `on_duplicate`, `verified`, PIE refusal, WP save diffs, or
-the v2.1 tools. That is unchanged.
+Until you run that script (or the same copy by hand), restart, and pass
+`tests/live_smoke_test.py`, the live Editor does not have `on_duplicate`,
+`verified`, PIE refusal, WP save diffs, or the v2.1 tools. That is
+unchanged.

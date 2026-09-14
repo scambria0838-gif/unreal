@@ -46,6 +46,20 @@ python tests/test_envelope_and_poller.py
 
 ## Install onto the Editor
 
-See `docs/v2/INTEGRATION_GUIDE.md`. Copy the `.py` files, restart, watch
-for `[SuperNinja v2] watcher started`, then run
-`tests/live_smoke_test.py` on that machine.
+This Linux Cloud Agent cannot reach `C:\` or restart Unreal. On the
+Windows Editor box, from a clone of **this repo** (not the Drive v2.0
+delivery zip):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install_v2_onto_editor.ps1
+```
+
+That backs up v1, copies the three `.py` files, and refuses `.pyc`.
+Restart the Editor. Output Log must show **v2.1.0 / 14 tools** and
+`[SuperNinja v2] watcher started`. Then:
+
+```powershell
+python tests\live_smoke_test.py --bridge-dir "<Project>\Saved\SuperNinja"
+```
+
+Full detail: `docs/v2/INTEGRATION_GUIDE.md`.
