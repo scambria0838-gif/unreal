@@ -1,26 +1,26 @@
-# SUPERNINJA_V2_DELIVERY
+# SuperNinja v2.1 — docs index
 
 Patched SuperNinjaAI Unreal bridge. Fixes the five silent-success bugs from the
 live session: unverified saves on World Partition levels, PIE contamination, no
 read-after-write, duplicate spawns, and single-package saves.
 
-**Start with `TEST_RESULTS.md`.** It states plainly what was tested and what was
-not — the live Unreal phase did not run, because the NINJA project does not
-exist on the machine this was built on.
+**Start with `HANDOFF.md`.** That is the Windows completion playbook.
+`TEST_RESULTS.md` states what the offline harness proved. The live Unreal
+phase has **not** run.
 
 | File | Read it when |
 |---|---|
-| `TEST_RESULTS.md` | First. What's proven, what isn't, what to run to close the gap. |
-| `INTEGRATION_GUIDE.md` | Installing v2 into the plugin folder. ~10 minutes. |
+| `HANDOFF.md` | First. What is verified, what is not, the three-step Windows gate. |
+| `TEST_RESULTS.md` | What's proven offline, what isn't. |
+| `INTEGRATION_GUIDE.md` | Installing v2 into the plugin folder. |
 | `CHANGELOG.md` | You want to know exactly what changed and why. |
 | `KNOWN_LIMITATIONS.md` | Before trusting v2 with something expensive. |
-| `NEXT_SKILLS.md` | Planning the next session. |
-| `superninja_bridge_v2.py` | The bridge. Drop-in replacement for `superninja_bridge.py`. |
-| `init_unreal_v2.py` | Entry point + inbox/outbox file watcher. Replaces `init_unreal.py`. |
-| `tests/offline_verification_harness.py` | `python tests/offline_verification_harness.py` → 58/58. Runs anywhere, no Unreal needed. |
-| `tests/live_smoke_test.py` | Against the real Editor. Writes `TEST_RESULTS_live.md`. |
-| `tests/offline_harness_output.txt` | Raw output of the offline run. |
-| `tools/phx_dedupe.py` | Phase 4 — PHX_ duplicate cleanup. Dry-run by default. |
+| `NEXT_SKILLS.md` | Planning the session *after* live-green. |
+| `../../Plugins/SuperNinjaAI/Content/Python/superninja_bridge_v2.py` | The bridge. |
+| `../../Plugins/SuperNinjaAI/Content/Python/init_unreal.py` | Entry point + inbox/outbox file watcher. |
+| `../../tests/offline_verification_harness.py` | `python tests/offline_verification_harness.py` → 74/74. No Unreal needed. |
+| `../../tests/live_smoke_test.py` | Against the real Editor. Writes `TEST_RESULTS_live.md`. |
+| `../../tools/phx_dedupe.py` | Phase 4 — PHX_ duplicate cleanup. Dry-run by default. |
 
 ## The 60-second version
 

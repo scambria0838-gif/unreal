@@ -39,6 +39,8 @@ PASS health: counts 110 external actors
 PASS health: flags conflicting plugin UnrealMCP
 PASS health: reports UE version
 PASS health: reports dirty packages
+PASS health: reports v2.1.0
+PASS health: reports 14 tools
 PASS save WP: ok and verified
 PASS save WP: verified via external actors
 PASS save WP: 15 files reported written
@@ -74,6 +76,22 @@ PASS plan: halts at the duplicate step
 PASS plan: remaining steps skipped, not silently run
 PASS plan: dry_run executes nothing
 
+--- first-class actor / camera / save-as tools ---
+PASS find_actors: verified read
+PASS set_actor_transform: ok and verified
+PASS set_actor_transform: location read back
+PASS set_actor_transform: missing actor refused
+PASS destroy_actor: ok and verified
+PASS destroy_actor: actor gone
+PASS destroy_actor: missing is a failure by default
+PASS destroy_actor: on_missing=skip is verified
+PASS set_viewport_camera: ok and verified
+PASS set_viewport_camera: location read back
+PASS save_level_as: ok and verified
+PASS save_level_as: dest file exists
+PASS save_level_as: outside manifest refused
+PASS save_level_as: missing dest file is a failure
+
 --- envelope invariants ---
 PASS envelope: every tool returns ok/verified/world_context/before/after/dirty_packages
 PASS envelope: ok is never true while verified is false
@@ -81,4 +99,4 @@ PASS envelope: every failure carries a reason
 PASS envelope: unknown tool rejected
 PASS envelope: malformed json rejected
 
-58/58 checks passed
+74/74 checks passed

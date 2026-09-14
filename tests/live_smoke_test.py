@@ -27,6 +27,53 @@ import uuid
 
 RESULTS = []
 
+EXPECTED_BRIDGE_VERSION = "2.1.0"
+EXPECTED_TOOL_COUNT = 14
+EXPECTED_TOOLS = (
+    "bridge_health",
+    "create_folder",
+    "destroy_actor",
+    "execute_python",
+    "find_actors",
+    "import_asset",
+    "place_static_mesh",
+    "save_level",
+    "save_level_as",
+    "set_actor_transform",
+    "set_directional_light",
+    "set_viewport_camera",
+    "spawn_actor",
+    "take_screenshot",
+)
+
+
+def identity_mismatch(health):
+    """Return a reason if health is not v2.1.0 / 14 tools, else None.
+
+    Version claims resolve against the live health payload (or the TOOLS
+    dict in-repo), never a filename. A 2.0.0 / 9-tool zip must fail here.
+    """
+    if not isinstance(health, dict):
+        return "health payload is not an object"
+    version = health.get("bridge_version")
+    if version != EXPECTED_BRIDGE_VERSION:
+        return (
+            "wrong bridge version {!r} (want {}). Old v2.0.0 / 9-tool "
+            "delivery won — delete Content/Python/superninja_bridge*.py "
+            "and re-run the installer from this repo."
+        ).format(version, EXPECTED_BRIDGE_VERSION)
+    count = health.get("tool_count")
+    if count is not None and count != EXPECTED_TOOL_COUNT:
+        return "wrong tool_count {} (want {})".format(count, EXPECTED_TOOL_COUNT)
+    tools = health.get("tools")
+    if tools is not None:
+        got = set(tools)
+        want = set(EXPECTED_TOOLS)
+        if got != want:
+            return "tool set mismatch missing={} extra={}".format(
+                sorted(want - got), sorted(got - want))
+    return None
+
 
 def find_bridge_dir(explicit=None):
     if explicit:
@@ -117,6 +164,12 @@ def main():
         return 1
     rtt = round((time.time() - t0) * 1000)
     check("bridge answers", h.get("ok"), h.get("reason"))
+    mismatch = identity_mismatch(h)
+    check("bridge identity is v2.1.0 / 14 tools (not the 9-tool zip)",
+          mismatch is None, mismatch or h.get("bridge_version"))
+    if mismatch:
+        print("STOP. {}".format(mismatch))
+        return 1
     check("world context is Editor (not PIE, not Unknown)",
           h.get("world_context") == "Editor", h.get("world_context"))
     print("      UE {}   bridge v{}   level {}   WP={}   round trip {} ms"

@@ -514,6 +514,9 @@ def main():
           r["conflicting_plugins"] == ["UnrealMCP"], r["conflicting_plugins"])
     check("health: reports UE version", r["ue_version"] == "5.8.0-fake", r)
     check("health: reports dirty packages", len(r["dirty_packages"]) == 2, r)
+    check("health: reports v2.1.0", r.get("bridge_version") == "2.1.0", r)
+    check("health: reports 14 tools",
+          r.get("tool_count") == 14 and len(r.get("tools") or []) == 14, r)
 
     # A save that really writes 15 new external actors.
     def good_save():

@@ -1,5 +1,9 @@
 # SuperNinjaAI plugin — v2.0.0 (patched, drop-in)
 
+> **Superseded.** This page describes the 9-tool / v2.0.0 zip. The target
+> in this repo is **v2.1.0 / 14 tools**. Install from the repo via
+> [`HANDOFF.md`](HANDOFF.md), not from this document.
+
 This is the **whole plugin**, patched. Not a diff, not a set of loose files —
 copy `SuperNinjaAI/` into `<YourProject>/Plugins/` and it works.
 

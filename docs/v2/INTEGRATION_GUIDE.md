@@ -1,5 +1,7 @@
 # Integration guide — SuperNinjaBridge v2.1
 
+**Windows completion playbook:** [`HANDOFF.md`](HANDOFF.md). Read that first.
+
 Install from **this git repo**, not from `SUPERNINJA_V2_DELIVERY.zip`.
 That zip is **v2.0.0 / 9 tools**. The Editor cutover is **v2.1.0 / 14 tools**.
 

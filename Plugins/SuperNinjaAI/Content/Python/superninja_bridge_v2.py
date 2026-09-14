@@ -77,7 +77,7 @@ MANIFEST = {
     ],
 }
 
-# Set by init_unreal_v2.py so tool_bridge_health can report transport latency.
+# Set by init_unreal.py so tool_bridge_health can report transport latency.
 WATCHER_STATS = {
     "transport": "unset",
     "requests_handled": 0,
@@ -1363,6 +1363,8 @@ def tool_bridge_health(args):
 
     payload = {
         "bridge_version": BRIDGE_VERSION,
+        "tool_count": len(TOOLS),
+        "tools": sorted(TOOLS.keys()),
         "ue_version": ue_version,
         "world_context": context,
         "world_path": _world_path(world) if world else None,

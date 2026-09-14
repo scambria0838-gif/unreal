@@ -36,11 +36,15 @@ is imported against it unmodified.
 
 ```
 $ python tests/offline_verification_harness.py
-58/58 checks passed
+74/74 checks passed
 ```
 
-Raw output: `tests/offline_harness_output.txt`.
-Environment: Windows 11, Python 3.14.6, 2026-09-12.
+The 2026-09-12 run said 58/58 (nine tools). That number is stale. Current
+harness covers the original envelope plus v2.1 first-class tools and
+health identity (`bridge_version` / `tool_count`).
+
+Raw output: re-run the harness; do not trust `tests/offline_harness_output.txt`
+if it still says 58/58.
 
 This proves the logic. It does not prove the Unreal API call names — see
 "Confidence" below.
@@ -120,6 +124,18 @@ caught.
 | Counts external-actor files (110) | PASS |
 | Reports the full dirty set | PASS |
 | Flags a conflicting plugin (`UnrealMCP` planted in `Plugins/`) | PASS |
+| Reports `bridge_version` = `2.1.0` | PASS |
+| Reports `tool_count` = 14 and the full tool list | PASS |
+
+### v2.1 first-class tools (static only)
+
+| Check | Result |
+|---|---|
+| `find_actors` verified read | PASS |
+| `set_actor_transform` location read back | PASS |
+| `destroy_actor` actor gone; missing is a failure; `on_missing=skip` verified | PASS |
+| `set_viewport_camera` location read back | PASS |
+| `save_level_as` dest exists; outside manifest refused; missing dest is a failure | PASS |
 
 Latency reporting is implemented (`sent_at` → `inbound_latency_ms`, plus watcher
 round-trip stats) but is only meaningful against the live watcher, so it is
@@ -129,8 +145,8 @@ untested here.
 
 | Check | Result |
 |---|---|
-| All 9 tools return `ok` / `verified` / `world_context` / `before` / `after` / `dirty_packages` | PASS |
-| **`ok` is never `true` while `verified` is `false`** (checked across all 9) | PASS |
+| All 14 tools return `ok` / `verified` / `world_context` / `before` / `after` / `dirty_packages` | PASS |
+| **`ok` is never `true` while `verified` is `false`** (checked across all 14) | PASS |
 | Every failing response carries a `reason` | PASS |
 | Unknown tool name rejected | PASS |
 | Malformed JSON rejected | PASS |

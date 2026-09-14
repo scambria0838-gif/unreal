@@ -5,6 +5,10 @@ Version 2.1.0 adds first-class `find_actors`, `destroy_actor`,
 cloud-poll / local-8765 hard-reject poller. See `V2_1_ADDITIONS.md`.
 Those tools are static-only / unverified-until-live.
 
+`bridge_health` now reports `tool_count` and `tools`. Live smoke fail-fasts
+if the running Editor is not v2.1.0 / 14 tools. Windows playbook:
+`docs/v2/HANDOFF.md`.
+
 Version 2.0.0. Source of truth for behaviour: the 13 skills in
 `02_SKILLS_PREMIUM_ENGLISH_DONE/`.
 
