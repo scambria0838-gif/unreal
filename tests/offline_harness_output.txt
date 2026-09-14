@@ -1,0 +1,84 @@
+
+--- Bug 2: PIE guard ---
+PASS PIE: spawn refused
+PASS PIE: context reported as PIE
+PASS PIE: reason names PIE mode
+PASS PIE: no actor created
+PASS PIE: save_level also refused
+PASS PIE: execute_python also refused
+PASS PIE: allow_pie=true overrides the guard
+
+--- Unknown world guard ---
+PASS Unknown world: spawn refused
+
+--- Bug 3: read-after-write verification ---
+PASS spawn: ok and verified
+PASS spawn: before/after counts present
+PASS spawn: dirty_packages reported
+PASS spawn: world_context Editor
+PASS spawn: phantom actor detected as failure
+PASS spawn: actor landing in PIE world reported unverified
+
+--- Bug 4: duplicate-label guard ---
+PASS duplicate: default policy refuses
+PASS duplicate: no second actor created
+PASS duplicate: skip returns ok with skipped=true
+PASS duplicate: skip created nothing
+PASS duplicate: replace succeeds
+PASS duplicate: replace leaves exactly one
+
+--- place_static_mesh: mesh assignment verified ---
+PASS mesh: ok and verified
+PASS mesh: assigned mesh reported
+PASS mesh: missing mesh refused
+PASS mesh: path outside manifest refused
+
+--- Bug 1 + 5: World Partition save verification ---
+PASS health: detects World Partition
+PASS health: counts 110 external actors
+PASS health: flags conflicting plugin UnrealMCP
+PASS health: reports UE version
+PASS health: reports dirty packages
+PASS save WP: ok and verified
+PASS save WP: verified via external actors
+PASS save WP: 15 files reported written
+PASS save WP: count 110 -> 125
+PASS save WP: .umap explicitly not used as evidence
+PASS save WP: cleared dirty packages listed
+PASS save WP: still-dirty packages listed (Bug 5)
+PASS save WP: silent no-op save reported as FAILURE
+PASS save WP: partial write vs expectation reported as failure
+PASS save WP: deletions verified
+
+--- Classic (non-partitioned) level save ---
+PASS save classic: verified via .umap mtime
+PASS save classic: untouched .umap reported as failure
+
+--- execute_python honesty ---
+PASS python: unverifiable code is NOT reported ok
+PASS python: expect expression makes it verified
+PASS python: false expect reported as failure
+PASS python: exception reported with traceback
+
+--- create_folder / import_asset ---
+PASS folder: created and verified
+PASS folder: v1 key 'path' preserved
+PASS import: missing source refused
+
+--- dry run ---
+PASS dry_run: reports what it would do
+PASS dry_run: nothing spawned
+
+--- plan execution ---
+PASS plan: halts at the duplicate step
+PASS plan: remaining steps skipped, not silently run
+PASS plan: dry_run executes nothing
+
+--- envelope invariants ---
+PASS envelope: every tool returns ok/verified/world_context/before/after/dirty_packages
+PASS envelope: ok is never true while verified is false
+PASS envelope: every failure carries a reason
+PASS envelope: unknown tool rejected
+PASS envelope: malformed json rejected
+
+58/58 checks passed
